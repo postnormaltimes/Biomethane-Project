@@ -1,0 +1,293 @@
+# ============================================================================
+# Biometano Project Finance Case Study
+# ============================================================================
+#
+# A 60,000 tpy FORSU biometano plant with:
+# - 2-year construction (2024-2025), COD in 2026
+# - 15-year operating horizon
+# - 5 revenue channels: Gate Fee, Tariff, CO2, GO, Compost
+# - Capital grant (40% of eligible CAPEX) with OIC-compliant accounting
+# - Project finance structure with debt/equity
+#
+# All values in EUR unless otherwise noted.
+# ============================================================================
+
+# Horizon and Timeline
+horizon:
+  base_year: 2024
+  years_forecast: 17  # 2 construction + 15 operating
+  construction_years: 2
+
+# Production and Capacity
+production:
+  forsu_throughput_tpy: 60000  # tonnes/year
+  biomethane_smc_y: 4000000    # Smc/year
+  kwh_per_smc: 10              # kWh per standard cubic meter
+  availability_profile:        # Ramp-up from COD
+    - 0.75                     # Year 1: 75%
+    - 0.90                     # Year 2: 90%
+    - 0.95                     # Year 3+: 95%
+    - 0.95
+    - 0.95
+  compost_tpy: 12148           # tonnes/year
+  co2_tpy: 4560                # tonnes/year
+
+# Revenue Channels
+revenues:
+  # FORSU Gate Fee (€/tonne)
+  gate_fee:
+    enabled: true
+    price: 190.0
+    payment_delay_days: 45
+    escalation_rate: 0.00      # Fixed rate
+  
+  # Biomethane Incentive Tariff (€/MWh)
+  tariff:
+    enabled: true
+    price: 70.16               # GSE tariff
+    payment_delay_days: 90
+    escalation_rate: 0.00
+  
+  # CO2 Sales (€/tonne)
+  co2:
+    enabled: true
+    price: 120.0
+    payment_delay_days: 45
+    escalation_rate: 0.02      # 2% annual increase
+  
+  # Garanzie d'Origine (€/MWh)
+  go:
+    enabled: true
+    price: 0.30
+    payment_delay_days: 60
+    escalation_rate: 0.00
+  
+  # Compost Sales (€/tonne)
+  compost:
+    enabled: true
+    price: 5.0
+    payment_delay_days: 30
+    escalation_rate: 0.01
+
+# OPEX Structure
+opex:
+  feedstock_handling:
+    fixed_annual: 500000
+    variable_per_tonne: 5.0
+    escalation_rate: 0.02
+    payment_delay_days: 30
+  
+  utilities:
+    fixed_annual: 300000
+    variable_per_mwh: 2.0
+    escalation_rate: 0.03
+    payment_delay_days: 30
+  
+  chemicals:
+    fixed_annual: 100000
+    escalation_rate: 0.02
+    payment_delay_days: 30
+  
+  maintenance:
+    percent_of_capex: 0.02     # 2% of total CAPEX
+    escalation_rate: 0.02
+    payment_delay_days: 30
+  
+  personnel:
+    fixed_annual: 800000
+    escalation_rate: 0.025     # 2.5% salary increases
+    payment_delay_days: 0      # Paid monthly
+  
+  insurance:
+    percent_of_capex: 0.005    # 0.5% of CAPEX
+    escalation_rate: 0.01
+    payment_delay_days: 0
+
+  overheads:
+    fixed_annual: 200000
+    escalation_rate: 0.02
+    payment_delay_days: 30
+  
+  digestate_handling:
+    variable_per_tonne: 3.0
+    escalation_rate: 0.02
+    payment_delay_days: 30
+  
+  other:
+    fixed_annual: 50000
+    escalation_rate: 0.02
+    payment_delay_days: 30
+
+# CAPEX Structure
+capex:
+  epc:
+    amount: 25000000
+    spend_profile: [0.40, 0.60]
+    useful_life_years: 20
+    capitalize: true
+    is_eligible_for_grant: true
+  
+  civils:
+    amount: 5000000
+    spend_profile: [0.70, 0.30]
+    useful_life_years: 30
+    capitalize: true
+    is_eligible_for_grant: true
+  
+  upgrading_unit:
+    amount: 8000000
+    spend_profile: [0.30, 0.70]
+    useful_life_years: 15
+    capitalize: true
+    is_eligible_for_grant: true
+  
+  grid_connection:
+    amount: 2000000
+    spend_profile: [0.50, 0.50]
+    useful_life_years: 25
+    capitalize: true
+    is_eligible_for_grant: true
+  
+  engineering:
+    amount: 1500000
+    spend_profile: [0.80, 0.20]
+    useful_life_years: 20
+    capitalize: true
+    is_eligible_for_grant: true
+  
+  permitting:
+    amount: 500000
+    spend_profile: [1.00]
+    useful_life_years: 20
+    capitalize: true
+    is_eligible_for_grant: false
+  
+  contingency:
+    amount: 6300000   # 15% of base CAPEX (€42M)
+    spend_profile: [0.30, 0.70]
+    useful_life_years: 20
+    capitalize: true
+    is_eligible_for_grant: true
+  
+  startup_costs:
+    amount: 500000
+    spend_profile: [0.00, 1.00]
+    useful_life_years: 5
+    capitalize: false
+    is_eligible_for_grant: false
+  
+  capitalize_idc: false
+
+# Financing Structure
+financing:
+  debt_amount: 30000000
+  debt_drawdown_profile: [0.40, 0.60]
+  cost_of_debt: 0.05           # 5% all-in
+  rd_schedule: {}              # Use constant rate
+  debt_repayment_years: 12
+  cash_at_base: 5000000
+  equity_book_at_base: 15000000
+  tax_rate: 0.24               # IRES 24%
+  rf: 0.03                     # Risk-free rate
+  rm: 0.08                     # Market return
+  beta: 1.2                    # Levered beta
+  ke_override: null            # Calculate from CAPM
+
+# Incentives with OIC Accounting
+incentives:
+  # Capital Grant ("Contributo in conto impianti")
+  capital_grant:
+    enabled: true
+    amount: null               # Calculate from percent
+    percent_of_eligible: 0.40  # 40% of eligible CAPEX
+    recognition_trigger: at_cod
+    cash_receipt_schedule:     # Over 2 years from COD
+      - 0.50
+      - 0.50
+    # OIC Accounting Policy:
+    # A1 = reduce_asset: Grant reduces fixed asset cost
+    # A2 = deferred_income: Grant as liability, released to P&L over asset life
+    accounting_policy: A2      # Deferred income approach
+    release_years: null        # Match asset life
+  
+  # ZES Tax Credit ("Credito d'imposta ZES")
+  tax_credit:
+    enabled: true
+    amount: null               # Calculate from percent
+    percent_of_eligible: 0.146189  # 14.6189% ZES tax credit
+    eligible_base: capex       # Based on total CAPEX
+    usable_from_year: null     # From COD year
+    carry_forward_years: 5     # 5 years to use credit
+    annual_cap_percent: 1.0    # 100% of taxes each year
+    # OIC Accounting Policy:
+    # B1 = reduce_tax: Directly reduces tax expense
+    # B2 = dta_receivable: Recorded as deferred tax asset
+    accounting_policy: B1
+
+# ============================================================================
+# INCENTIVES POLICY (PNRR + ZES Waterfall Allocation)
+# ============================================================================
+# New model using capacity-based PNRR eligibility and ESL gap for ZES
+incentives_policy:
+  enabled: true
+  profile: media_impresa_sicilia
+  max_esl_intensity: 0.50  # 50% for media impresa in Sicily
+  
+  # PNRR Configuration
+  pnrr:
+    grant_rate: 0.40
+    annual_hours: 8000
+    biomethane_smc_per_year: 4000000
+    cs_max_base_eur_per_smcph: 50000
+    inflation_adj_factor: 1.137
+    tech_costs_cap_pct: 0.12
+  
+  # ZES Configuration
+  zes:
+    theoretical_rate: 0.50
+    riparto_coeff: 0.6038  # Stress case
+    allow_overlap_with_pnrr: true
+    enforce_no_double_financing: true
+    base_allocation_strategy: waterfall
+    tech_costs_eligibility_share: 0.50
+  
+  # CAPEX Breakdown with per-line eligibility
+  capex_breakdown:
+    - name: "Opere Civili"
+      amount: 9500000
+      oic_class: "B.II.1"
+      pnrr_eligible: true
+      zes_eligible: eligible
+      
+    - name: "Impianto Processo"
+      amount: 13500000
+      oic_class: "B.II.2"
+      pnrr_eligible: true
+      zes_eligible: eligible
+      
+    - name: "Upgrading"
+      amount: 5500000
+      oic_class: "B.II.2"
+      pnrr_eligible: true
+      zes_eligible: eligible
+      
+    - name: "Connessione Rete"
+      amount: 1500000
+      oic_class: "B.I.7"
+      pnrr_eligible: true
+      zes_eligible: not_eligible  # MUST BE FALSE - asset in RAB
+      notes: "Asset in RAB del TSO/DSO: non bene materiale del beneficiario"
+      
+    - name: "Spese Tecniche"
+      amount: 2000000
+      oic_class: "Capitalizzate"
+      pnrr_eligible: true
+      zes_eligible: partial
+      notes: "Partially ZES-eligible"
+
+
+# Terminal Value
+terminal_value:
+  method: perpetuity           # or 'exit_multiple'
+  perpetuity_growth: 0.0       # g = 0% (conservative)
+  exit_multiple: null          # Used if method = exit_multiple

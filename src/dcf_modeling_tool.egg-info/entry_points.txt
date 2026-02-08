@@ -1,0 +1,2 @@
+[console_scripts]
+dcf = dcf_ui_cli.cli:app

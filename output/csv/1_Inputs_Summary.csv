@@ -1,0 +1,7 @@
+Parameter,Value
+Base Year,2022
+Forecast Years,"2023, 2024, 2025"
+Discounting Mode,year_specific_flat
+Cost of Equity (Ke),0.1180
+Terminal Value Method,perpetuity
+Terminal Growth Rate,0.0000

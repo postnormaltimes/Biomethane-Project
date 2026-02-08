@@ -1,0 +1,122 @@
+# Example DCF Input File
+# This template shows all available input options
+
+discounting_mode: "year_specific_flat"  # or "constant"
+
+timeline:
+  base_year: 2022
+  forecast_years: [2023, 2024, 2025]
+
+revenue:
+  # Option 1: Explicit revenue series
+  # explicit_revenue:
+  #   2023: 14375.0
+  #   2024: 15812.5
+  #   2025: 17393.75
+  
+  # Option 2: Base revenue + growth rates (used below)
+  base_revenue: 12500.0
+  growth_rates:
+    2023: 0.15
+    2024: 0.10
+    2025: 0.10
+
+operating:
+  # Option 1: Cost ratios (costs as % of revenue)
+  cost_ratios:
+    2023: 0.85
+    2024: 0.83
+    2025: 0.80
+  
+  # Option 2: Explicit EBITDA (would override cost_ratios)
+  # explicit_ebitda:
+  #   2023: 2156.25
+  #   2024: 2688.125
+  #   2025: 3478.75
+  
+  # D&A is always required
+  depreciation_amortization:
+    2022: 500.0
+    2023: 550.0
+    2024: 650.0
+    2025: 700.0
+
+nwc:
+  # Option 1: NWC as % of revenue
+  nwc_percent:
+    2022: 0.16
+    2023: 0.16
+    2024: 0.13
+    2025: 0.10
+  
+  # Option 2: Explicit NWC values
+  # explicit_nwc:
+  #   2022: 2000.0
+  #   2023: 2300.0
+  #   2024: 2055.625
+  #   2025: 1739.375
+
+investments:
+  # Capex as positive cash outflows
+  capex:
+    2023: 800.0
+    2024: 900.0
+    2025: 1000.0
+
+tax:
+  # Constant rate or by-year dict
+  tax_rate: 0.30
+  # tax_rate:
+  #   2023: 0.30
+  #   2024: 0.30
+  #   2025: 0.30
+
+capm:
+  rf: 0.04    # Risk-free rate
+  rm: 0.10    # Market return
+  beta: 1.30  # Equity beta
+  # ke_override: 0.118  # Optional direct override
+
+debt:
+  debt_balances:
+    2022: 1500.0
+    2023: 2050.0
+    2024: 2055.63
+    2025: 2039.38
+  # Cost of debt: constant or by-year
+  rd:
+    2022: 0.05
+    2023: 0.06
+    2024: 0.065
+    2025: 0.065
+
+wacc:
+  # weighting_mode: "target" or "book_value"
+  weighting_mode: "book_value"
+  
+  # For target mode:
+  # wE: 0.80
+  # wD: 0.20
+  
+  # For book_value mode:
+  equity_book_inputs:
+    base_equity_book: 10000.0
+    # dividends:
+    #   2023: 0.0
+    #   2024: 0.0
+    #   2025: 0.0
+    # new_equity:
+    #   2023: 0.0
+    #   2024: 0.0
+    #   2025: 0.0
+
+terminal_value:
+  method: "perpetuity"  # or "exit_multiple"
+  g: 0.0  # Perpetuity growth rate
+  
+  # For exit_multiple method:
+  # exit_multiple: 8.0
+  # exit_metric: "ebitda"  # or "ebit", "revenue"
+
+net_debt:
+  cash_and_equivalents: 1492.10

@@ -1,0 +1,80 @@
+# NordSilica S.r.l. DCF Input File
+# Valuation Date: 31/12/2023
+# Units: € million
+
+discounting_mode: "year_specific_flat"
+
+timeline:
+  base_year: 2023
+  forecast_years: [2024, 2025, 2026, 2027]
+
+revenue:
+  base_revenue: 9800.0
+  growth_rates:
+    2024: 0.12
+    2025: 0.09
+    2026: 0.07
+    2027: 0.05
+
+operating:
+  # Cost ratios (EBITDA margin = 1 - cost%)
+  cost_ratios:
+    2024: 0.86
+    2025: 0.84
+    2026: 0.82
+    2027: 0.81
+  depreciation_amortization:
+    2023: 420.0
+    2024: 450.0
+    2025: 520.0
+    2026: 560.0
+    2027: 590.0
+
+nwc:
+  nwc_percent:
+    2023: 0.14
+    2024: 0.15
+    2025: 0.13
+    2026: 0.12
+    2027: 0.11
+
+investments:
+  capex:
+    2024: 650.0
+    2025: 720.0
+    2026: 820.0
+    2027: 900.0
+
+tax:
+  tax_rate: 0.28
+
+capm:
+  rf: 0.035
+  rm: 0.09
+  beta: 1.10
+
+debt:
+  debt_balances:
+    2023: 1200.0
+    2024: 1550.0
+    2025: 1600.0
+    2026: 1550.0
+    2027: 1500.0
+  rd:
+    2023: 0.048
+    2024: 0.056
+    2025: 0.061
+    2026: 0.062
+    2027: 0.062
+
+wacc:
+  weighting_mode: "book_value"
+  equity_book_inputs:
+    base_equity_book: 5000.0
+
+terminal_value:
+  method: "perpetuity"
+  g: 0.02
+
+net_debt:
+  cash_and_equivalents: 950.0
