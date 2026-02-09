@@ -385,6 +385,19 @@ def _write_dcf_formula_workbook(outputs: DCFOutputs, wb: Workbook) -> None:
         (label_cash_base, outputs.valuation_bridge.cash_at_base),
         (label_nwc_base, outputs.nwc_schedule[0].nwc if outputs.nwc_schedule else 0.0),
         (label_fixed_assets_base, 0.0),
+    assumptions = wb.create_sheet("Assumptions")
+    assumptions["A1"] = "Parameter"
+    assumptions["B1"] = "Value"
+    params = [
+        ("Base Year", outputs.base_year),
+        ("Discounting Mode", outputs.discounting_mode.value),
+        ("Cost of Equity (Ke)", outputs.ke),
+        ("Terminal Value Method", outputs.terminal_value.method.value),
+        ("Terminal Growth Rate (g)", outputs.terminal_value.growth_rate or 0.0),
+        ("Exit Multiple", outputs.terminal_value.exit_multiple or 0.0),
+        ("Exit Metric", outputs.terminal_value.exit_metric or ""),
+        ("Debt at Base", outputs.valuation_bridge.debt_at_base),
+        ("Cash at Base", outputs.valuation_bridge.cash_at_base),
     ]
     param_rows: dict[str, int] = {}
     for idx, (label, value) in enumerate(params, start=2):
@@ -439,6 +452,18 @@ def _write_dcf_formula_workbook(outputs: DCFOutputs, wb: Workbook) -> None:
     _series_row(label_debt_balance, {w.year: w.debt for w in outputs.wacc_details})
     equity_values = outputs.equity_book_values or {}
     _series_row(label_equity_book, equity_values)
+    _series_row("Revenue", {p.year: p.revenue for p in outputs.projections})
+    _series_row("Operating Costs", {p.year: p.operating_costs for p in outputs.projections})
+    _series_row("D&A", {p.year: p.depreciation_amortization for p in outputs.projections})
+    _series_row("Interest Expense", {p.year: p.interest_expense for p in outputs.projections})
+    _series_row("Capex", {c.year: c.capex for c in outputs.cash_flows})
+    _series_row("Net Borrowing", {c.year: c.net_borrowing for c in outputs.cash_flows})
+    _series_row("NWC", {n.year: n.nwc for n in outputs.nwc_schedule})
+    _series_row("Tax Rate", {w.year: w.tax_rate for w in outputs.wacc_details})
+    _series_row("WACC", {d.year: d.wacc for d in outputs.discount_schedule})
+    _series_row("Debt Balance", {w.year: w.debt for w in outputs.wacc_details})
+    equity_values = outputs.equity_book_values or {}
+    _series_row("Equity Book", equity_values)
 
     _style_table_header(assumptions, 1, 2)
     _style_table_header(assumptions, series_header_row, 1 + len(all_years))
@@ -459,6 +484,9 @@ def _write_dcf_formula_workbook(outputs: DCFOutputs, wb: Workbook) -> None:
     revenue_sheet.cell(row=2, column=1, value=_label("Total Revenue", "€"))
     for year, col in layout.year_to_col(years).items():
         revenue_sheet.cell(row=2, column=col, value=f"=Assumptions!{_assumption_cell(label_revenue, year)}")
+    revenue_sheet.cell(row=2, column=1, value="Total Revenue")
+    for year, col in layout.year_to_col(years).items():
+        revenue_sheet.cell(row=2, column=col, value=f"=Assumptions!{_assumption_cell('Revenue', year)}")
     _style_table_header(revenue_sheet, 1, 1 + len(years))
     _style_table_body(revenue_sheet, 2, 2, 1 + len(years))
     _auto_fit_columns(revenue_sheet, 1 + len(years))
@@ -469,6 +497,10 @@ def _write_dcf_formula_workbook(outputs: DCFOutputs, wb: Workbook) -> None:
     opex_sheet.cell(row=3, column=1, value=_label("EBITDA", "€"))
     for year, col in layout.year_to_col(years).items():
         opex_sheet.cell(row=2, column=col, value=f"=Assumptions!{_assumption_cell(label_operating_costs, year)}")
+    opex_sheet.cell(row=2, column=1, value="Operating Costs")
+    opex_sheet.cell(row=3, column=1, value="EBITDA")
+    for year, col in layout.year_to_col(years).items():
+        opex_sheet.cell(row=2, column=col, value=f"=Assumptions!{_assumption_cell('Operating Costs', year)}")
         rev_cell = layout.cell(col, 2)
         opex_sheet.cell(row=3, column=col, value=f"=Revenue_By_Channel!{rev_cell}-OPEX!{layout.cell(col, 2)}")
     _style_table_header(opex_sheet, 1, 1 + len(years))
@@ -489,6 +521,17 @@ def _write_dcf_formula_workbook(outputs: DCFOutputs, wb: Workbook) -> None:
         _label("EBT", "€"),
         _label("Taxes on EBT", "€"),
         _label("Net Income", "€"),
+        "Revenue",
+        "Operating Costs",
+        "EBITDA",
+        "D&A",
+        "EBIT",
+        "Tax on EBIT",
+        "NOPAT",
+        "Interest Expense",
+        "EBT",
+        "Taxes on EBT",
+        "Net Income",
     ]
     for idx, label in enumerate(labels, start=2):
         income_sheet.cell(row=idx, column=1, value=label)
@@ -502,6 +545,12 @@ def _write_dcf_formula_workbook(outputs: DCFOutputs, wb: Workbook) -> None:
         income_sheet.cell(row=7, column=col, value=f"=Income_Statement!{layout.cell(col, 6)}*{tax_rate}")
         income_sheet.cell(row=8, column=col, value=f"=Income_Statement!{layout.cell(col, 6)}-Income_Statement!{layout.cell(col, 7)}")
         income_sheet.cell(row=9, column=col, value=f"=Assumptions!{_assumption_cell(label_interest, year)}")
+        income_sheet.cell(row=5, column=col, value=f"=Assumptions!{_assumption_cell('D&A', year)}")
+        income_sheet.cell(row=6, column=col, value=f"=Income_Statement!{layout.cell(col, 4)}-Income_Statement!{layout.cell(col, 5)}")
+        tax_rate = f"Assumptions!{_assumption_cell('Tax Rate', year)}"
+        income_sheet.cell(row=7, column=col, value=f"=Income_Statement!{layout.cell(col, 6)}*{tax_rate}")
+        income_sheet.cell(row=8, column=col, value=f"=Income_Statement!{layout.cell(col, 6)}-Income_Statement!{layout.cell(col, 7)}")
+        income_sheet.cell(row=9, column=col, value=f"=Assumptions!{_assumption_cell('Interest Expense', year)}")
         income_sheet.cell(row=10, column=col, value=f"=Income_Statement!{layout.cell(col, 6)}-Income_Statement!{layout.cell(col, 9)}")
         income_sheet.cell(row=11, column=col, value=f"=Income_Statement!{layout.cell(col, 10)}*{tax_rate}")
         income_sheet.cell(row=12, column=col, value=f"=Income_Statement!{layout.cell(col, 10)}-Income_Statement!{layout.cell(col, 11)}")
@@ -525,6 +574,12 @@ def _write_dcf_formula_workbook(outputs: DCFOutputs, wb: Workbook) -> None:
                 column=col,
                 value=f"=Revenue_By_Channel!{layout.cell(col, 2)}*Assumptions!{_assumption_cell(label_nwc_pct, year)}",
             )
+    balance_sheet.cell(row=2, column=1, value="NWC")
+    balance_sheet.cell(row=3, column=1, value="ΔNWC")
+    balance_sheet.cell(row=4, column=1, value="Debt Balance")
+    balance_sheet.cell(row=5, column=1, value="Equity Book")
+    for year, col in balance_layout.year_to_col(all_years).items():
+        balance_sheet.cell(row=2, column=col, value=f"=Assumptions!{_assumption_cell('NWC', year)}")
         if year == outputs.base_year:
             balance_sheet.cell(row=3, column=col, value="")
         else:
@@ -535,6 +590,9 @@ def _write_dcf_formula_workbook(outputs: DCFOutputs, wb: Workbook) -> None:
             balance_sheet.cell(row=4, column=col, value=f"=Assumptions!{_assumption_cell(label_debt_balance, year)}")
         if year in equity_values:
             balance_sheet.cell(row=5, column=col, value=f"=Assumptions!{_assumption_cell(label_equity_book, year)}")
+            balance_sheet.cell(row=4, column=col, value=f"=Assumptions!{_assumption_cell('Debt Balance', year)}")
+        if year in equity_values:
+            balance_sheet.cell(row=5, column=col, value=f"=Assumptions!{_assumption_cell('Equity Book', year)}")
     _style_table_header(balance_sheet, 1, 1 + len(all_years))
     _style_table_body(balance_sheet, 2, 5, 1 + len(all_years))
     _auto_fit_columns(balance_sheet, 1 + len(all_years))
@@ -601,6 +659,18 @@ def _write_dcf_formula_workbook(outputs: DCFOutputs, wb: Workbook) -> None:
         _label("Interest Tax Shield", "€"),
         _label("Net Borrowing", "€"),
         _label("FCFE", "€"),
+    cash_flow = wb.create_sheet("Cash_Flow")
+    _write_year_header(cash_flow, years, layout, "Line Item")
+    cf_labels = [
+        "NOPAT",
+        "D&A",
+        "ΔNWC",
+        "Capex",
+        "FCFF",
+        "Interest Expense",
+        "Interest Tax Shield",
+        "Net Borrowing",
+        "FCFE",
     ]
     for idx, label in enumerate(cf_labels, start=2):
         cash_flow.cell(row=idx, column=1, value=label)
@@ -614,6 +684,15 @@ def _write_dcf_formula_workbook(outputs: DCFOutputs, wb: Workbook) -> None:
         cash_flow.cell(row=7, column=col, value=f"=Income_Statement!{layout.cell(col, 9)}")
         cash_flow.cell(row=8, column=col, value=f"=Cash_Flow!{layout.cell(col, 7)}*{tax_rate}")
         cash_flow.cell(row=9, column=col, value=f"=Assumptions!{_assumption_cell(label_net_borrowing, year)}")
+        tax_rate = f"Assumptions!{_assumption_cell('Tax Rate', year)}"
+        cash_flow.cell(row=2, column=col, value=f"=Income_Statement!{layout.cell(col, 8)}")
+        cash_flow.cell(row=3, column=col, value=f"=Assumptions!{_assumption_cell('D&A', year)}")
+        cash_flow.cell(row=4, column=col, value=f"=Balance_Sheet!{balance_layout.cell(balance_layout.year_to_col(all_years)[year], 3)}")
+        cash_flow.cell(row=5, column=col, value=f"=Assumptions!{_assumption_cell('Capex', year)}")
+        cash_flow.cell(row=6, column=col, value=f"=Cash_Flow!{layout.cell(col, 2)}+Cash_Flow!{layout.cell(col, 3)}-Cash_Flow!{layout.cell(col, 4)}-Cash_Flow!{layout.cell(col, 5)}")
+        cash_flow.cell(row=7, column=col, value=f"=Income_Statement!{layout.cell(col, 9)}")
+        cash_flow.cell(row=8, column=col, value=f"=Cash_Flow!{layout.cell(col, 7)}*{tax_rate}")
+        cash_flow.cell(row=9, column=col, value=f"=Assumptions!{_assumption_cell('Net Borrowing', year)}")
         cash_flow.cell(
             row=10,
             column=col,
@@ -627,6 +706,8 @@ def _write_dcf_formula_workbook(outputs: DCFOutputs, wb: Workbook) -> None:
     _write_year_header(fcff_sheet, years, layout, "Line Item")
     fcff_sheet.cell(row=2, column=1, value=_label("FCFF", "€"))
     fcff_sheet.cell(row=3, column=1, value=_label("FCFE", "€"))
+    fcff_sheet.cell(row=2, column=1, value="FCFF")
+    fcff_sheet.cell(row=3, column=1, value="FCFE")
     for year, col in layout.year_to_col(years).items():
         fcff_sheet.cell(row=2, column=col, value=f"=Cash_Flow!{layout.cell(col, 6)}")
         fcff_sheet.cell(row=3, column=col, value=f"=Cash_Flow!{layout.cell(col, 10)}")
@@ -646,6 +727,15 @@ def _write_dcf_formula_workbook(outputs: DCFOutputs, wb: Workbook) -> None:
         _label("PV(FCFF)", "€"),
         _label("FCFE", "€"),
         _label("PV(FCFE)", "€"),
+        "Period",
+        "WACC",
+        "Ke",
+        "DF (WACC)",
+        "DF (Ke)",
+        "FCFF",
+        "PV(FCFF)",
+        "FCFE",
+        "PV(FCFE)",
     ]
     for idx, label in enumerate(disc_labels, start=2):
         discounting.cell(row=idx, column=1, value=label)
@@ -653,6 +743,8 @@ def _write_dcf_formula_workbook(outputs: DCFOutputs, wb: Workbook) -> None:
         discounting.cell(row=2, column=col, value=idx)
         discounting.cell(row=3, column=col, value=f"=Assumptions!{_assumption_cell(label_wacc, year)}")
         discounting.cell(row=4, column=col, value=f"=Assumptions!{_param_cell(label_ke)}")
+        discounting.cell(row=3, column=col, value=f"=Assumptions!{_assumption_cell('WACC', year)}")
+        discounting.cell(row=4, column=col, value=f"=Assumptions!{_param_cell('Cost of Equity (Ke)')}")
         discounting.cell(row=5, column=col, value=f"=1/(1+Discounting!{layout.cell(col, 3)})^Discounting!{layout.cell(col, 2)}")
         discounting.cell(row=6, column=col, value=f"=1/(1+Discounting!{layout.cell(col, 4)})^Discounting!{layout.cell(col, 2)}")
         discounting.cell(row=7, column=col, value=f"=Cash_Flow!{layout.cell(col, 6)}")
@@ -680,6 +772,19 @@ def _write_dcf_formula_workbook(outputs: DCFOutputs, wb: Workbook) -> None:
         _label("PV Terminal Value (FCFE)", "€"),
         _label("Equity Value (Direct)", "€"),
         _label("Reconciliation Difference", "€"),
+        "Sum PV(FCFF)",
+        "Terminal Value (FCFF)",
+        "PV Terminal Value (FCFF)",
+        "Enterprise Value",
+        "Debt at Base",
+        "Cash at Base",
+        "Net Debt",
+        "Equity Value (from EV)",
+        "Sum PV(FCFE)",
+        "Terminal Value (FCFE)",
+        "PV Terminal Value (FCFE)",
+        "Equity Value (Direct)",
+        "Reconciliation Difference",
     ]
     for idx, label in enumerate(valuation_items, start=2):
         valuation_sheet.cell(row=idx, column=1, value=label)
@@ -693,6 +798,12 @@ def _write_dcf_formula_workbook(outputs: DCFOutputs, wb: Workbook) -> None:
         tv_fcfe_formula = (
             f"=Cash_Flow!{layout.cell(last_col, 10)}*(1+Assumptions!{_param_cell(label_g)})"
             f"/(Assumptions!{_param_cell(label_ke)}-Assumptions!{_param_cell(label_g)})"
+            f"=Cash_Flow!{layout.cell(last_col, 6)}*(1+Assumptions!{_param_cell('Terminal Growth Rate (g)')})"
+            f"/(Assumptions!{_assumption_cell('WACC', years[-1])}-Assumptions!{_param_cell('Terminal Growth Rate (g)')})"
+        )
+        tv_fcfe_formula = (
+            f"=Cash_Flow!{layout.cell(last_col, 10)}*(1+Assumptions!{_param_cell('Terminal Growth Rate (g)')})"
+            f"/(Assumptions!{_param_cell('Cost of Equity (Ke)')}-Assumptions!{_param_cell('Terminal Growth Rate (g)')})"
         )
     else:
         metric = (outputs.terminal_value.exit_metric or "EBITDA").lower()
@@ -703,6 +814,7 @@ def _write_dcf_formula_workbook(outputs: DCFOutputs, wb: Workbook) -> None:
         else:
             metric_cell = f"OPEX!{layout.cell(last_col, 3)}"
         tv_formula = f"={metric_cell}*Assumptions!{_param_cell(label_exit_multiple)}"
+        tv_formula = f"={metric_cell}*Assumptions!{_param_cell('Exit Multiple')}"
         tv_fcfe_formula = tv_formula
 
     valuation_sheet.cell(
@@ -719,6 +831,8 @@ def _write_dcf_formula_workbook(outputs: DCFOutputs, wb: Workbook) -> None:
     valuation_sheet.cell(row=5, column=2, value="=Valuation_Summary!B2+Valuation_Summary!B4")
     valuation_sheet.cell(row=6, column=2, value=f"=Assumptions!{_param_cell(label_debt_base)}")
     valuation_sheet.cell(row=7, column=2, value=f"=Assumptions!{_param_cell(label_cash_base)}")
+    valuation_sheet.cell(row=6, column=2, value=f"=Assumptions!{_param_cell('Debt at Base')}")
+    valuation_sheet.cell(row=7, column=2, value=f"=Assumptions!{_param_cell('Cash at Base')}")
     valuation_sheet.cell(row=8, column=2, value="=Valuation_Summary!B6-Valuation_Summary!B7")
     valuation_sheet.cell(row=9, column=2, value="=Valuation_Summary!B5-Valuation_Summary!B8")
     valuation_sheet.cell(
@@ -787,6 +901,9 @@ def _write_dcf_formula_workbook(outputs: DCFOutputs, wb: Workbook) -> None:
             "Assumptions series rows are inputs copied from model outputs (Revenue, OPEX, D&A, Capex, Interest, Net Borrowing, WACC, Tax Rate).",
             "NWC base and Fixed Assets base are input anchors for roll-forward schedules.",
             "Cash is held constant outside a modeled cash schedule.",
+        ],
+        [
+            "Assumptions series rows are inputs copied from model outputs (Revenue, OPEX, D&A, Capex, Interest, Net Borrowing, NWC, WACC, Tax Rate).",
         ],
         [
             "Discount factors use end-of-period convention: DF=1/(1+r)^period.",
@@ -1091,6 +1208,30 @@ def _write_biometano_formula_workbook(
         (label_overheads_dpo, case.opex.overheads.payment_delay_days),
         (label_digestate_dpo, case.opex.digestate_handling.payment_delay_days),
         (label_other_dpo, case.opex.other.payment_delay_days),
+    params = [
+        ("Base Year", case.horizon.base_year),
+        ("COD Year", case.horizon.cod_year),
+        ("Tax Rate", case.financing.tax_rate),
+        ("Cost of Equity (Ke)", valuation.ke),
+        ("Terminal Value Method", case.terminal_value.method),
+        ("Terminal Growth Rate (g)", case.terminal_value.perpetuity_growth),
+        ("Exit Multiple", case.terminal_value.exit_multiple or 0.0),
+        ("Debt at Base", valuation.debt_at_base),
+        ("Cash at Base", valuation.cash_at_base),
+        ("FORSU Throughput (tpy)", case.production.forsu_throughput_tpy),
+        ("Biomethane (MWh/y)", case.production.get_biomethane_mwh()),
+        ("CO2 (t/y)", case.production.co2_tpy),
+        ("Compost (t/y)", case.production.compost_tpy),
+        ("Gate Fee Price", case.revenues.gate_fee.price),
+        ("Gate Fee Escalation", case.revenues.gate_fee.escalation_rate),
+        ("Tariff Price", case.revenues.tariff.price),
+        ("Tariff Escalation", case.revenues.tariff.escalation_rate),
+        ("CO2 Price", case.revenues.co2.price),
+        ("CO2 Escalation", case.revenues.co2.escalation_rate),
+        ("GO Price", case.revenues.go.price),
+        ("GO Escalation", case.revenues.go.escalation_rate),
+        ("Compost Price", case.revenues.compost.price),
+        ("Compost Escalation", case.revenues.compost.escalation_rate),
     ]
     param_rows: dict[str, int] = {}
     for idx, (label, value) in enumerate(params, start=2):
@@ -1189,6 +1330,43 @@ def _write_biometano_formula_workbook(
     _series_row(label_share_capital, {y: b.share_capital for y, b in balance.items()})
     _series_row(label_retained_earnings, {y: b.retained_earnings for y, b in balance.items()})
     _series_row(label_current_profit, {y: b.current_year_profit for y, b in balance.items()})
+    _series_row("Availability", {p.year: p.availability for p in projections.production})
+    _series_row("OPEX Feedstock", {o.year: o.feedstock_handling for o in projections.opex})
+    _series_row("OPEX Utilities", {o.year: o.utilities for o in projections.opex})
+    _series_row("OPEX Chemicals", {o.year: o.chemicals for o in projections.opex})
+    _series_row("OPEX Maintenance", {o.year: o.maintenance for o in projections.opex})
+    _series_row("OPEX Personnel", {o.year: o.personnel for o in projections.opex})
+    _series_row("OPEX Insurance", {o.year: o.insurance for o in projections.opex})
+    _series_row("OPEX Overheads", {o.year: o.overheads for o in projections.opex})
+    _series_row("OPEX Digestate", {o.year: o.digestate_handling for o in projections.opex})
+    _series_row("OPEX Other", {o.year: o.other for o in projections.opex})
+    _series_row("Depreciation", projections.depreciation)
+    _series_row("Grant Release", projections.grant_income_release)
+    _series_row("Interest Expense", projections.interest)
+    _series_row("Tax Credit Used", projections.tax_credit_utilization)
+    _series_row("Delta NWC", projections.delta_nwc)
+    _series_row("Capex", {c.year: -c.total for c in projections.capex})
+    _series_row("Grant Cash", {c.year: c.grant_cash_received for c in statements.cash_flows})
+    _series_row("Debt Draw", {c.year: c.debt_drawdown for c in statements.cash_flows})
+    _series_row("Debt Repay", {c.year: c.debt_repayment for c in statements.cash_flows})
+    _series_row("Interest Paid", {c.year: c.interest_paid for c in statements.cash_flows})
+    _series_row("Equity Contribution", {c.year: c.equity_contribution for c in statements.cash_flows})
+    _series_row("Opening Cash", {c.year: c.opening_cash for c in statements.cash_flows})
+
+    balance = {b.year: b for b in statements.balance_sheets}
+    _series_row("Cash", {y: b.cash for y, b in balance.items()})
+    _series_row("Trade Receivables", {y: b.trade_receivables for y, b in balance.items()})
+    _series_row("Grant Receivable", {y: b.grant_receivable for y, b in balance.items()})
+    _series_row("Tax Credit Receivable", {y: b.tax_credit_receivable for y, b in balance.items()})
+    _series_row("Fixed Assets Gross", {y: b.fixed_assets_gross for y, b in balance.items()})
+    _series_row("Accumulated Depreciation", {y: b.accumulated_depreciation for y, b in balance.items()})
+    _series_row("Trade Payables", {y: b.trade_payables for y, b in balance.items()})
+    _series_row("Taxes Payable", {y: b.taxes_payable for y, b in balance.items()})
+    _series_row("Debt", {y: b.debt for y, b in balance.items()})
+    _series_row("Deferred Income", {y: b.deferred_income for y, b in balance.items()})
+    _series_row("Share Capital", {y: b.share_capital for y, b in balance.items()})
+    _series_row("Retained Earnings", {y: b.retained_earnings for y, b in balance.items()})
+    _series_row("Current Year Profit", {y: b.current_year_profit for y, b in balance.items()})
 
     _style_table_header(assumptions, 1, 2)
     _style_table_header(assumptions, series_header_row, 1 + len(years))
@@ -1220,6 +1398,15 @@ def _write_biometano_formula_workbook(
     production_sheet.cell(row=4, column=col, value=f"=Assumptions!{_param_cell(label_biomethane)}*Production!{layout.cell(col, 2)}")
     production_sheet.cell(row=5, column=col, value=f"=Assumptions!{_param_cell(label_co2)}*Production!{layout.cell(col, 2)}")
     production_sheet.cell(row=6, column=col, value=f"=Assumptions!{_param_cell(label_compost)}*Production!{layout.cell(col, 2)}")
+    prod_labels = ["Availability", "FORSU (t)", "Biomethane (MWh)", "CO2 (t)", "Compost (t)"]
+    for idx, label in enumerate(prod_labels, start=2):
+        production_sheet.cell(row=idx, column=1, value=label)
+    for year, col in layout.year_to_col(years).items():
+        production_sheet.cell(row=2, column=col, value=f"=Assumptions!{_series_cell('Availability', year)}")
+        production_sheet.cell(row=3, column=col, value=f"=Assumptions!{_param_cell('FORSU Throughput (tpy)')}*Production!{layout.cell(col, 2)}")
+        production_sheet.cell(row=4, column=col, value=f"=Assumptions!{_param_cell('Biomethane (MWh/y)')}*Production!{layout.cell(col, 2)}")
+        production_sheet.cell(row=5, column=col, value=f"=Assumptions!{_param_cell('CO2 (t/y)')}*Production!{layout.cell(col, 2)}")
+        production_sheet.cell(row=6, column=col, value=f"=Assumptions!{_param_cell('Compost (t/y)')}*Production!{layout.cell(col, 2)}")
     _style_table_header(production_sheet, 1, 1 + len(years))
     _style_table_body(production_sheet, 2, 6, 1 + len(years))
     _auto_fit_columns(production_sheet, 1 + len(years))
@@ -1237,6 +1424,10 @@ def _write_biometano_formula_workbook(
     for idx, label in enumerate(rev_labels, start=2):
         revenue_sheet.cell(row=idx, column=1, value=label)
     cod_cell = _param_cell(label_cod_year)
+    rev_labels = ["Gate Fee", "Tariff", "CO2", "GO", "Compost", "Total"]
+    for idx, label in enumerate(rev_labels, start=2):
+        revenue_sheet.cell(row=idx, column=1, value=label)
+    cod_cell = _param_cell("COD Year")
     for year, col in layout.year_to_col(years).items():
         year_ref = layout.cell(col, 1)
         revenue_sheet.cell(
@@ -1246,6 +1437,8 @@ def _write_biometano_formula_workbook(
                 f"=IF({year_ref}<Assumptions!{cod_cell},0,"
                 f"Production!{layout.cell(col, 3)}*Assumptions!{_param_cell(label_gate_price)}"
                 f"*(1+Assumptions!{_param_cell(label_gate_escal)})^({year_ref}-Assumptions!{cod_cell}))"
+                f"Production!{layout.cell(col, 3)}*Assumptions!{_param_cell('Gate Fee Price')}"
+                f"*(1+Assumptions!{_param_cell('Gate Fee Escalation')})^({year_ref}-Assumptions!{cod_cell}))"
             ),
         )
         revenue_sheet.cell(
@@ -1255,6 +1448,8 @@ def _write_biometano_formula_workbook(
                 f"=IF({year_ref}<Assumptions!{cod_cell},0,"
                 f"Production!{layout.cell(col, 4)}*Assumptions!{_param_cell(label_tariff_price)}"
                 f"*(1+Assumptions!{_param_cell(label_tariff_escal)})^({year_ref}-Assumptions!{cod_cell}))"
+                f"Production!{layout.cell(col, 4)}*Assumptions!{_param_cell('Tariff Price')}"
+                f"*(1+Assumptions!{_param_cell('Tariff Escalation')})^({year_ref}-Assumptions!{cod_cell}))"
             ),
         )
         revenue_sheet.cell(
@@ -1264,6 +1459,8 @@ def _write_biometano_formula_workbook(
                 f"=IF({year_ref}<Assumptions!{cod_cell},0,"
                 f"Production!{layout.cell(col, 4)}*Assumptions!{_param_cell(label_go_price)}"
                 f"*(1+Assumptions!{_param_cell(label_go_escal)})^({year_ref}-Assumptions!{cod_cell}))"
+                f"Production!{layout.cell(col, 5)}*Assumptions!{_param_cell('CO2 Price')}"
+                f"*(1+Assumptions!{_param_cell('CO2 Escalation')})^({year_ref}-Assumptions!{cod_cell}))"
             ),
         )
         revenue_sheet.cell(
@@ -1273,6 +1470,8 @@ def _write_biometano_formula_workbook(
                 f"=IF({year_ref}<Assumptions!{cod_cell},0,"
                 f"Production!{layout.cell(col, 5)}*Assumptions!{_param_cell(label_co2_price)}"
                 f"*(1+Assumptions!{_param_cell(label_co2_escal)})^({year_ref}-Assumptions!{cod_cell}))"
+                f"Production!{layout.cell(col, 4)}*Assumptions!{_param_cell('GO Price')}"
+                f"*(1+Assumptions!{_param_cell('GO Escalation')})^({year_ref}-Assumptions!{cod_cell}))"
             ),
         )
         revenue_sheet.cell(
@@ -1282,6 +1481,8 @@ def _write_biometano_formula_workbook(
                 f"=IF({year_ref}<Assumptions!{cod_cell},0,"
                 f"Production!{layout.cell(col, 6)}*Assumptions!{_param_cell(label_compost_price)}"
                 f"*(1+Assumptions!{_param_cell(label_compost_escal)})^({year_ref}-Assumptions!{cod_cell}))"
+                f"Production!{layout.cell(col, 6)}*Assumptions!{_param_cell('Compost Price')}"
+                f"*(1+Assumptions!{_param_cell('Compost Escalation')})^({year_ref}-Assumptions!{cod_cell}))"
             ),
         )
         revenue_sheet.cell(
@@ -1570,6 +1771,217 @@ def _write_biometano_formula_workbook(
     _style_table_body(discounting, 2, 10, 1 + len(operating_years))
     _auto_fit_columns(discounting, 1 + len(operating_years))
 
+
+    opex_sheet = wb.create_sheet("OPEX")
+    _write_year_header(opex_sheet, years, layout, "Line Item")
+    opex_labels = [
+        ("Feedstock", "OPEX Feedstock"),
+        ("Utilities", "OPEX Utilities"),
+        ("Chemicals", "OPEX Chemicals"),
+        ("Maintenance", "OPEX Maintenance"),
+        ("Personnel", "OPEX Personnel"),
+        ("Insurance", "OPEX Insurance"),
+        ("Overheads", "OPEX Overheads"),
+        ("Digestate", "OPEX Digestate"),
+        ("Other", "OPEX Other"),
+        ("Total", None),
+    ]
+    for idx, (label, _) in enumerate(opex_labels, start=2):
+        opex_sheet.cell(row=idx, column=1, value=label)
+    for year, col in layout.year_to_col(years).items():
+        for idx, (_, series_label) in enumerate(opex_labels, start=2):
+            if series_label:
+                opex_sheet.cell(row=idx, column=col, value=f"=Assumptions!{_series_cell(series_label, year)}")
+        opex_sheet.cell(
+            row=11,
+            column=col,
+            value=f"=SUM(OPEX!{layout.cell(col, 2)}:{layout.cell(col, 10)})",
+        )
+    _style_table_header(opex_sheet, 1, 1 + len(years))
+    _style_table_body(opex_sheet, 2, 11, 1 + len(years))
+    _auto_fit_columns(opex_sheet, 1 + len(years))
+
+    income_sheet = wb.create_sheet("Income_Statement")
+    _write_year_header(income_sheet, years, layout, "Line Item")
+    income_labels = [
+        "Revenue",
+        "OPEX",
+        "EBITDA",
+        "D&A",
+        "Grant Release",
+        "EBIT",
+        "Interest",
+        "EBT",
+        "Taxes Before Credit",
+        "Tax Credit Used",
+        "Taxes Paid",
+        "Net Income",
+    ]
+    for idx, label in enumerate(income_labels, start=2):
+        income_sheet.cell(row=idx, column=1, value=label)
+    for year, col in layout.year_to_col(years).items():
+        income_sheet.cell(row=2, column=col, value=f"=Revenue_By_Channel!{layout.cell(col, 7)}")
+        income_sheet.cell(row=3, column=col, value=f"=OPEX!{layout.cell(col, 11)}")
+        income_sheet.cell(row=4, column=col, value=f"=Income_Statement!{layout.cell(col, 2)}-Income_Statement!{layout.cell(col, 3)}")
+        income_sheet.cell(row=5, column=col, value=f"=Assumptions!{_series_cell('Depreciation', year)}")
+        income_sheet.cell(row=6, column=col, value=f"=Assumptions!{_series_cell('Grant Release', year)}")
+        income_sheet.cell(row=7, column=col, value=f"=Income_Statement!{layout.cell(col, 4)}-Income_Statement!{layout.cell(col, 5)}+Income_Statement!{layout.cell(col, 6)}")
+        income_sheet.cell(row=8, column=col, value=f"=Assumptions!{_series_cell('Interest Expense', year)}")
+        income_sheet.cell(row=9, column=col, value=f"=Income_Statement!{layout.cell(col, 7)}-Income_Statement!{layout.cell(col, 8)}")
+        income_sheet.cell(row=10, column=col, value=f"=Income_Statement!{layout.cell(col, 9)}*Assumptions!{_param_cell('Tax Rate')}")
+        income_sheet.cell(row=11, column=col, value=f"=Assumptions!{_series_cell('Tax Credit Used', year)}")
+        income_sheet.cell(row=12, column=col, value=f"=Income_Statement!{layout.cell(col, 10)}-Income_Statement!{layout.cell(col, 11)}")
+        income_sheet.cell(row=13, column=col, value=f"=Income_Statement!{layout.cell(col, 9)}-Income_Statement!{layout.cell(col, 12)}")
+    _style_table_header(income_sheet, 1, 1 + len(years))
+    _style_table_body(income_sheet, 2, 13, 1 + len(years))
+    _auto_fit_columns(income_sheet, 1 + len(years))
+
+    balance_sheet = wb.create_sheet("Balance_Sheet")
+    _write_year_header(balance_sheet, years, layout, "Line Item")
+    balance_labels = [
+        "Cash",
+        "Trade Receivables",
+        "Grant Receivable",
+        "Tax Credit Receivable",
+        "Total Current Assets",
+        "Fixed Assets Gross",
+        "Accumulated Depreciation",
+        "Fixed Assets Net",
+        "Total Assets",
+        "Trade Payables",
+        "Taxes Payable",
+        "Total Current Liabilities",
+        "Debt",
+        "Deferred Income",
+        "Total Non-Current Liabilities",
+        "Total Liabilities",
+        "Share Capital",
+        "Retained Earnings",
+        "Current Year Profit",
+        "Total Equity",
+        "Total Liabilities & Equity",
+        "Balance Check",
+    ]
+    for idx, label in enumerate(balance_labels, start=2):
+        balance_sheet.cell(row=idx, column=1, value=label)
+    for year, col in layout.year_to_col(years).items():
+        balance_sheet.cell(row=2, column=col, value=f"=Assumptions!{_series_cell('Cash', year)}")
+        balance_sheet.cell(row=3, column=col, value=f"=Assumptions!{_series_cell('Trade Receivables', year)}")
+        balance_sheet.cell(row=4, column=col, value=f"=Assumptions!{_series_cell('Grant Receivable', year)}")
+        balance_sheet.cell(row=5, column=col, value=f"=Assumptions!{_series_cell('Tax Credit Receivable', year)}")
+        balance_sheet.cell(row=6, column=col, value=f"=SUM(Balance_Sheet!{layout.cell(col, 2)}:{layout.cell(col, 5)})")
+        balance_sheet.cell(row=7, column=col, value=f"=Assumptions!{_series_cell('Fixed Assets Gross', year)}")
+        balance_sheet.cell(row=8, column=col, value=f"=Assumptions!{_series_cell('Accumulated Depreciation', year)}")
+        balance_sheet.cell(row=9, column=col, value=f"=Balance_Sheet!{layout.cell(col, 7)}-Balance_Sheet!{layout.cell(col, 8)}")
+        balance_sheet.cell(row=10, column=col, value=f"=Balance_Sheet!{layout.cell(col, 6)}+Balance_Sheet!{layout.cell(col, 9)}")
+        balance_sheet.cell(row=11, column=col, value=f"=Assumptions!{_series_cell('Trade Payables', year)}")
+        balance_sheet.cell(row=12, column=col, value=f"=Assumptions!{_series_cell('Taxes Payable', year)}")
+        balance_sheet.cell(row=13, column=col, value=f"=SUM(Balance_Sheet!{layout.cell(col, 11)}:{layout.cell(col, 12)})")
+        balance_sheet.cell(row=14, column=col, value=f"=Assumptions!{_series_cell('Debt', year)}")
+        balance_sheet.cell(row=15, column=col, value=f"=Assumptions!{_series_cell('Deferred Income', year)}")
+        balance_sheet.cell(row=16, column=col, value=f"=SUM(Balance_Sheet!{layout.cell(col, 14)}:{layout.cell(col, 15)})")
+        balance_sheet.cell(row=17, column=col, value=f"=Balance_Sheet!{layout.cell(col, 13)}+Balance_Sheet!{layout.cell(col, 16)}")
+        balance_sheet.cell(row=18, column=col, value=f"=Assumptions!{_series_cell('Share Capital', year)}")
+        balance_sheet.cell(row=19, column=col, value=f"=Assumptions!{_series_cell('Retained Earnings', year)}")
+        balance_sheet.cell(row=20, column=col, value=f"=Assumptions!{_series_cell('Current Year Profit', year)}")
+        balance_sheet.cell(row=21, column=col, value=f"=SUM(Balance_Sheet!{layout.cell(col, 18)}:{layout.cell(col, 20)})")
+        balance_sheet.cell(row=22, column=col, value=f"=Balance_Sheet!{layout.cell(col, 17)}+Balance_Sheet!{layout.cell(col, 21)}")
+        balance_sheet.cell(row=23, column=col, value=f"=Balance_Sheet!{layout.cell(col, 10)}-Balance_Sheet!{layout.cell(col, 22)}")
+    _style_table_header(balance_sheet, 1, 1 + len(years))
+    _style_table_body(balance_sheet, 2, 23, 1 + len(years))
+    _auto_fit_columns(balance_sheet, 1 + len(years))
+
+    cash_flow = wb.create_sheet("Cash_Flow")
+    _write_year_header(cash_flow, years, layout, "Line Item")
+    cf_labels = [
+        "Net Income",
+        "Interest",
+        "Depreciation",
+        "Grant Release",
+        "Change in NWC",
+        "CFO",
+        "Capex",
+        "Grant Cash",
+        "CFI",
+        "Debt Draw",
+        "Debt Repay",
+        "Interest Paid",
+        "Equity Contribution",
+        "CFF",
+        "Net CF",
+        "Opening Cash",
+        "Closing Cash",
+    ]
+    for idx, label in enumerate(cf_labels, start=2):
+        cash_flow.cell(row=idx, column=1, value=label)
+    for year, col in layout.year_to_col(years).items():
+        cash_flow.cell(row=2, column=col, value=f"=Income_Statement!{layout.cell(col, 13)}")
+        cash_flow.cell(row=3, column=col, value=f"=Income_Statement!{layout.cell(col, 8)}")
+        cash_flow.cell(row=4, column=col, value=f"=Assumptions!{_series_cell('Depreciation', year)}")
+        cash_flow.cell(row=5, column=col, value=f"=Assumptions!{_series_cell('Grant Release', year)}")
+        cash_flow.cell(row=6, column=col, value=f"=Assumptions!{_series_cell('Delta NWC', year)}")
+        cash_flow.cell(row=7, column=col, value=f"=SUM(Cash_Flow!{layout.cell(col, 2)}:{layout.cell(col, 4)})-Cash_Flow!{layout.cell(col, 5)}+Cash_Flow!{layout.cell(col, 6)}")
+        cash_flow.cell(row=8, column=col, value=f"=Assumptions!{_series_cell('Capex', year)}")
+        cash_flow.cell(row=9, column=col, value=f"=Assumptions!{_series_cell('Grant Cash', year)}")
+        cash_flow.cell(row=10, column=col, value=f"=Cash_Flow!{layout.cell(col, 8)}+Cash_Flow!{layout.cell(col, 9)}")
+        cash_flow.cell(row=11, column=col, value=f"=Assumptions!{_series_cell('Debt Draw', year)}")
+        cash_flow.cell(row=12, column=col, value=f"=Assumptions!{_series_cell('Debt Repay', year)}")
+        cash_flow.cell(row=13, column=col, value=f"=Assumptions!{_series_cell('Interest Paid', year)}")
+        cash_flow.cell(row=14, column=col, value=f"=Assumptions!{_series_cell('Equity Contribution', year)}")
+        cash_flow.cell(row=15, column=col, value=f"=SUM(Cash_Flow!{layout.cell(col, 11)}:{layout.cell(col, 14)})")
+        cash_flow.cell(row=16, column=col, value=f"=Cash_Flow!{layout.cell(col, 7)}+Cash_Flow!{layout.cell(col, 10)}+Cash_Flow!{layout.cell(col, 15)}")
+        cash_flow.cell(row=17, column=col, value=f"=Assumptions!{_series_cell('Opening Cash', year)}")
+        cash_flow.cell(row=18, column=col, value=f"=Cash_Flow!{layout.cell(col, 17)}+Cash_Flow!{layout.cell(col, 16)}")
+    _style_table_header(cash_flow, 1, 1 + len(years))
+    _style_table_body(cash_flow, 2, 18, 1 + len(years))
+    _auto_fit_columns(cash_flow, 1 + len(years))
+
+    fcff_sheet = wb.create_sheet("FCFF")
+    _write_year_header(fcff_sheet, operating_years, layout, "Line Item")
+    fcff_labels = ["EBIT", "D&A", "ΔNWC", "Capex", "FCFF", "Net Borrowing", "FCFE"]
+    for idx, label in enumerate(fcff_labels, start=2):
+        fcff_sheet.cell(row=idx, column=1, value=label)
+    for year, col in layout.year_to_col(operating_years).items():
+        fcff_sheet.cell(row=2, column=col, value=f"=Income_Statement!{layout.cell(layout.year_to_col(years)[year], 7)}")
+        fcff_sheet.cell(row=3, column=col, value=f"=Assumptions!{_series_cell('Depreciation', year)}")
+        fcff_sheet.cell(row=4, column=col, value=f"=Assumptions!{_series_cell('Delta NWC', year)}")
+        fcff_sheet.cell(row=5, column=col, value=f"=Assumptions!{_series_cell('Capex', year)}")
+        fcff_sheet.cell(row=6, column=col, value=f"=FCFF!{layout.cell(col, 2)}*(1-Assumptions!{_param_cell('Tax Rate')})+FCFF!{layout.cell(col, 3)}-FCFF!{layout.cell(col, 4)}-FCFF!{layout.cell(col, 5)}")
+        fcff_sheet.cell(row=7, column=col, value=f"=Cash_Flow!{layout.cell(layout.year_to_col(years)[year], 11)}+Cash_Flow!{layout.cell(layout.year_to_col(years)[year], 12)}")
+        fcff_sheet.cell(row=8, column=col, value=f"=FCFF!{layout.cell(col, 6)}-Income_Statement!{layout.cell(layout.year_to_col(years)[year], 8)}+Income_Statement!{layout.cell(layout.year_to_col(years)[year], 8)}*Assumptions!{_param_cell('Tax Rate')}+FCFF!{layout.cell(col, 7)}")
+    _style_table_header(fcff_sheet, 1, 1 + len(operating_years))
+    _style_table_body(fcff_sheet, 2, 8, 1 + len(operating_years))
+    _auto_fit_columns(fcff_sheet, 1 + len(operating_years))
+
+    discounting = wb.create_sheet("Discounting")
+    _write_year_header(discounting, operating_years, layout, "Line Item")
+    disc_labels = [
+        "Period",
+        "WACC",
+        "Ke",
+        "DF (WACC)",
+        "DF (Ke)",
+        "FCFF",
+        "PV(FCFF)",
+        "FCFE",
+        "PV(FCFE)",
+    ]
+    for idx, label in enumerate(disc_labels, start=2):
+        discounting.cell(row=idx, column=1, value=label)
+    for idx, (year, col) in enumerate(layout.year_to_col(operating_years).items(), start=1):
+        discounting.cell(row=2, column=col, value=idx)
+        discounting.cell(row=3, column=col, value=valuation.wacc.get(year, 0.0))
+        discounting.cell(row=4, column=col, value=f"=Assumptions!{_param_cell('Cost of Equity (Ke)')}")
+        discounting.cell(row=5, column=col, value=f"=1/(1+Discounting!{layout.cell(col, 3)})^Discounting!{layout.cell(col, 2)}")
+        discounting.cell(row=6, column=col, value=f"=1/(1+Discounting!{layout.cell(col, 4)})^Discounting!{layout.cell(col, 2)}")
+        discounting.cell(row=7, column=col, value=f"=FCFF!{layout.cell(col, 6)}")
+        discounting.cell(row=8, column=col, value=f"=Discounting!{layout.cell(col, 7)}*Discounting!{layout.cell(col, 5)}")
+        discounting.cell(row=9, column=col, value=f"=FCFF!{layout.cell(col, 8)}")
+        discounting.cell(row=10, column=col, value=f"=Discounting!{layout.cell(col, 9)}*Discounting!{layout.cell(col, 6)}")
+    _style_table_header(discounting, 1, 1 + len(operating_years))
+    _style_table_body(discounting, 2, 10, 1 + len(operating_years))
+    _auto_fit_columns(discounting, 1 + len(operating_years))
+
     valuation_sheet = wb.create_sheet("Valuation_Summary")
     valuation_sheet["A1"] = "Metric"
     valuation_sheet["B1"] = "Value"
@@ -1586,6 +1998,18 @@ def _write_biometano_formula_workbook(
         _label("PV Terminal Value (FCFE)", "€"),
         _label("Equity Value (Direct)", "€"),
         _label("Reconciliation Difference", "€"),
+        "Sum PV(FCFF)",
+        "Terminal Value (FCFF)",
+        "PV Terminal Value (FCFF)",
+        "Enterprise Value",
+        "Debt at Base",
+        "Cash at Base",
+        "Net Debt",
+        "Equity Value (FCFF/WACC)",
+        "Sum PV(FCFE)",
+        "PV Terminal Value (FCFE)",
+        "Equity Value (Direct)",
+        "Reconciliation Difference",
     ]
     for idx, label in enumerate(metrics, start=2):
         valuation_sheet.cell(row=idx, column=1, value=label)
@@ -1594,11 +2018,14 @@ def _write_biometano_formula_workbook(
         tv_formula = (
             f"=FCFF!{layout.cell(last_col, 6)}*(1+Assumptions!{_param_cell(label_g)})"
             f"/(Discounting!{layout.cell(last_col, 3)}-Assumptions!{_param_cell(label_g)})"
+            f"=FCFF!{layout.cell(last_col, 6)}*(1+Assumptions!{_param_cell('Terminal Growth Rate (g)')})"
+            f"/(Discounting!{layout.cell(last_col, 3)}-Assumptions!{_param_cell('Terminal Growth Rate (g)')})"
         )
     else:
         tv_formula = (
             f"=Income_Statement!{layout.cell(layout.year_to_col(years)[operating_years[-1]], 4)}"
             f"*Assumptions!{_param_cell(label_exit_multiple)}"
+            f"*Assumptions!{_param_cell('Exit Multiple')}"
         )
     valuation_sheet.cell(
         row=2,
@@ -1610,6 +2037,8 @@ def _write_biometano_formula_workbook(
     valuation_sheet.cell(row=5, column=2, value="=Valuation_Summary!B2+Valuation_Summary!B4")
     valuation_sheet.cell(row=6, column=2, value=f"=Assumptions!{_param_cell(label_debt_base)}")
     valuation_sheet.cell(row=7, column=2, value=f"=Assumptions!{_param_cell(label_cash_base)}")
+    valuation_sheet.cell(row=6, column=2, value=f"=Assumptions!{_param_cell('Debt at Base')}")
+    valuation_sheet.cell(row=7, column=2, value=f"=Assumptions!{_param_cell('Cash at Base')}")
     valuation_sheet.cell(row=8, column=2, value="=Valuation_Summary!B6-Valuation_Summary!B7")
     valuation_sheet.cell(row=9, column=2, value="=Valuation_Summary!B5-Valuation_Summary!B8")
     valuation_sheet.cell(
@@ -1691,6 +2120,9 @@ def _write_biometano_formula_workbook(
         ],
         [
             "Assumptions series rows are inputs copied from model outputs (OPEX categories, depreciation, grant release, interest, capex, financing, balance sheet components).",
+        ],
+        [
+            "Assumptions series rows are inputs copied from model outputs (OPEX categories, depreciation, grant release, interest, NWC, capex, financing, balance sheet components).",
         ],
         [
             "Discount factors use end-of-period convention: DF=1/(1+r)^period.",

@@ -52,5 +52,9 @@ def test_biometano_export_formulas(tmp_path: Path) -> None:
     )
     assert not missing
 
+    revenue = wb["Revenue_By_Channel"]
+    assert isinstance(revenue["B2"].value, str)
+    assert revenue["B2"].value.startswith("=")
+
     assumptions = wb["Assumptions"]
     assert not (isinstance(assumptions["B2"].value, str) and assumptions["B2"].value.startswith("="))
