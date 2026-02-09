@@ -184,58 +184,81 @@ def display_income_statement(
     console.print()
 
 
-def display_fcff_bridge(
+def display_discounting_summary(
     projections: BiometanoProjections,
-    statements: FinancialStatements,
-    tax_rate: float = 0.24,
+    valuation: ValuationOutputs,
 ) -> None:
-    """Display FCFF Bridge (Yearly) - EBIT to Free Cash Flow.
+    """Display discounting schedule + PV + terminal value."""
+    table = Table(
+        title="📉 Discounting & PV Schedule (FCFF/WACC)",
+        box=box.ROUNDED,
+        show_header=True,
+        header_style="bold blue",
+    )
     
-    Shows the financial bridge from EBIT to FCFF per Maccarrone DCF methodology:
-    FCFF = EBIT × (1-t) + D&A ± ΔNWC - CAPEX
+    table.add_column("Year", justify="center")
+    table.add_column("WACC", justify="right")
+    table.add_column("FCFF", justify="right")
+    table.add_column("PV(FCFF)", justify="right", style="bold")
+    
+    for year in sorted(valuation.pv_fcff.keys()):
+        fcff = valuation.fcff.get(year, 0.0)
+        pv_fcff = valuation.pv_fcff.get(year, 0.0)
+        wacc = valuation.wacc.get(year, 0.0)
+        if year >= projections.cod_year:
+            table.add_row(
+                str(year),
+                f"{wacc:.2%}",
+                f"€{fcff:,.0f}",
+                f"€{pv_fcff:,.0f}",
+            )
+    
+    console.print(table)
+    console.print()
+    
+    tv_table = Table(
+        title="🏁 Terminal Value (FCFF/WACC)",
+        box=box.ROUNDED,
+        show_header=True,
+        header_style="bold cyan",
+    )
+    tv_table.add_column("Metric", justify="left")
+    tv_table.add_column("Value", justify="right")
+    tv_table.add_row("Terminal Value", f"€{valuation.terminal_value_fcff:,.0f}")
+    tv_table.add_row("PV(Terminal Value)", f"€{valuation.pv_terminal_value_fcff:,.0f}")
+    tv_table.add_row("Sum PV(FCFF)", f"€{valuation.sum_pv_fcff:,.0f}")
+    
+    console.print(tv_table)
+    console.print()
+
+
+def display_valuation_summary(valuation: ValuationOutputs, methodology: str = "enterprise") -> None:
+    """Display compact Valuation Summary - replaces Valuation Bridge.
+    
+    No bridge waterfall, no commentary - just core valuation metrics.
     """
     table = Table(
-        title="💰 Financial Statement / FCFF Bridge (Yearly)",
+        title="🎯 Valuation Summary (FCFF/WACC)",
         box=box.ROUNDED,
         show_header=True,
         header_style="bold cyan",
     )
     
-    table.add_column("Year", justify="center")
-    table.add_column("EBIT", justify="right")
-    table.add_column("Tax @24%", justify="right")
-    table.add_column("NOPAT", justify="right")
-    table.add_column("+ D&A", justify="right")
-    table.add_column("± ΔNWC", justify="right")
-    table.add_column("- CAPEX", justify="right")
-    table.add_column("FCFF", justify="right", style="bold green")
+    table.add_column("Metric", justify="left")
+    table.add_column("Value", justify="right")
     
-    for stmt in statements.income_statements:
-        year = stmt.year
-        if year >= projections.cod_year:
-            ebit = projections.ebit.get(year, 0)
-            tax_on_ebit = ebit * tax_rate if ebit > 0 else 0
-            nopat = ebit - tax_on_ebit
-            da = projections.depreciation.get(year, 0)
-            delta_nwc = projections.delta_nwc.get(year, 0)
-            capex = projections.get_capex(year)
-            capex_val = capex.total if capex else 0
-            fcff = projections.fcff.get(year, 0)
-            
-            table.add_row(
-                str(year),
-                f"{ebit:,.0f}",
-                f"({tax_on_ebit:,.0f})",
-                f"{nopat:,.0f}",
-                f"{da:,.0f}",
-                f"({delta_nwc:,.0f})" if delta_nwc > 0 else f"{-delta_nwc:,.0f}",
-                f"({capex_val:,.0f})",
-                f"{fcff:,.0f}",
-            )
+    table.add_row("Sum PV(FCFF)", f"€{valuation.sum_pv_fcff:,.0f}")
+    table.add_row("Terminal Value", f"€{valuation.terminal_value_fcff:,.0f}")
+    table.add_row("PV(Terminal Value)", f"€{valuation.pv_terminal_value_fcff:,.0f}")
+    table.add_row("", "")
+    table.add_row("[bold]Enterprise Value (FCFF/WACC)[/bold]", f"[bold]€{valuation.enterprise_value:,.0f}[/bold]")
+    
+    # TV share
+    tv_share = valuation.pv_terminal_value_fcff / valuation.enterprise_value * 100 if valuation.enterprise_value > 0 else 0
+    table.add_row("TV Share of EV", f"{tv_share:.1f}%")
     
     console.print(table)
     console.print()
-
 
 def display_balance_sheet_recap(
     statements: FinancialStatements,
@@ -652,19 +675,19 @@ def display_all_biometano(
     # Section 5: Income Statement
     display_income_statement(projections, statements)
     
-    # Section 6: Financial Statement / FCFF Bridge
-    display_fcff_bridge(projections, statements)
-    
-    # Section 7: Balance Sheet Recap
+    # Section 6: Balance Sheet Recap
     display_balance_sheet_recap(statements, projections)
     
-    # Section 8: FCFF Schedule
+    # Section 7: FCFF Schedule
     display_fcff_schedule(projections)
     
-    # Section 8: Valuation Summary (no bridge, no commentary)
+    # Section 8: Discounting + PV + TV
+    display_discounting_summary(projections, valuation)
+    
+    # Section 9: Valuation Summary (no bridge, no commentary)
     display_valuation_summary(valuation, methodology)
     
-    # Section 9 & 10: Sensitivity (if provided)
+    # Section 10 & 11: Sensitivity (if provided)
     if sensitivity:
         display_sensitivity_tornado(sensitivity, methodology)
         display_scenario_comparison(sensitivity, methodology)

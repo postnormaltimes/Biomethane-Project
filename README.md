@@ -16,13 +16,13 @@ A production-quality Discounted Cash Flow (DCF) modeling tool with CLI interface
 ## Installation
 
 ```bash
-cd /path/to/pyro-prominence
+cd /path/to/Biomethane-Project
 pip install -e ".[dev]"
 ```
 
 ## Quick Start
 
-### Run DCF Analysis
+### Run Generic DCF Analysis
 
 ```bash
 # Display results in terminal
@@ -36,6 +36,19 @@ dcf run examples/example_input.yaml --charts
 
 # Export everything
 dcf export examples/example_input.yaml -o results.xlsx --csv --charts
+```
+
+### Run Biometano Analysis
+
+```bash
+# Full biometano report (tables + exports + charts)
+dcf biometano report --input case_files/biometano_case.yaml
+
+# Quick biometano run
+dcf biometano run --input case_files/biometano_case.yaml
+
+# Sensitivity analysis
+dcf biometano sens --input case_files/biometano_case.yaml
 ```
 
 ### Validate Input File
@@ -81,8 +94,22 @@ revenue:
 ## Testing
 
 ```bash
-pytest tests/ -v
+pytest -q
 ```
+
+### Smoke Test
+
+```bash
+./scripts/smoke_test.sh
+```
+
+## Execution Flow (CLI → Engine → Outputs)
+
+- **CLI entry points** (`dcf_ui_cli.cli`, `dcf_ui_cli.biometano_cli`) parse inputs and wire commands.
+- **Input validation** happens in the schema/models layer (`dcf_engine.models`, `dcf_projects.biometano.schema`).
+- **Projection builders** generate year-by-year schedules (`dcf_engine.engine`, `dcf_projects.biometano.builder`).
+- **Statements + valuation** compute cash flow, discounting, PV/TV, and EV/Equity outputs (`dcf_engine.*`, `dcf_projects.biometano.statements`, `dcf_projects.biometano.valuation`).
+- **Renderers + exports + charts** format results to terminal tables, XLSX/CSV, and Plotly outputs (`dcf_ui_cli.display`, `dcf_ui_cli.biometano_display`, `dcf_io.writers`, `dcf_ui_cli.*_charts`).
 
 ## Project Structure
 

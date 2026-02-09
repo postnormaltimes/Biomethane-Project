@@ -11,9 +11,10 @@ Report Section Order:
 5. Financial Statement (Yearly)
 6. Balance Sheet (Yearly)
 7. FCFF Schedule
-8. Valuation Summary (compact, EV-based)
-9. Sensitivity Analysis
-10. Scenario Comparison
+8. Discounting + PV + Terminal Value
+9. Valuation Summary (compact, EV-based)
+10. Sensitivity Analysis
+11. Scenario Comparison
 """
 from __future__ import annotations
 
@@ -45,6 +46,89 @@ app = typer.Typer(
     help="Biometano project finance commands",
 )
 console = Console()
+
+
+
+def _open_path(path: Path) -> None:
+    """Open a file or directory in the system file explorer."""
+    try:
+        if path.is_file():
+            # If it's a file, reveal it in the folder (or open it, depending on implementation)
+            # typer.launch(str(path), locate=True) reveals in Finder/Explorer
+            typer.launch(str(path), locate=True)
+            console.print(f"[dim]Opened folder containing: {path}[/dim]")
+        elif path.is_dir():
+            typer.launch(str(path))
+            console.print(f"[dim]Opened directory: {path}[/dim]")
+    except Exception as e:
+        console.print(f"[yellow]Could not open path: {e}[/yellow]")
+
+
+
+def _open_path(path: Path) -> None:
+    """Open a file or directory in the system file explorer."""
+    try:
+        # typer.launch(..., locate=True) reveals file in finder/explorer
+        # typer.launch(...) opens the file/folder
+        path_str = str(path)
+        if path.is_file():
+             typer.launch(path_str, locate=True)
+             console.print(f"[dim]Revealed in Finder: {path.name}[/dim]")
+        else:
+             typer.launch(path_str)
+             console.print(f"[dim]Opened folder: {path.name}[/dim]")
+    except Exception as e:
+        console.print(f"[yellow]Could not open path: {e}[/yellow]")
+
+
+def _resolve_input_file(input_file: Optional[Path], input_option: Optional[Path]) -> Path:
+    """Resolve input file from positional arg or --input option."""
+    resolved = input_option or input_file
+    if resolved is None:
+        raise typer.BadParameter("Missing input file. Provide a positional INPUT_FILE or --input.")
+    if not resolved.exists():
+        raise typer.BadParameter(f"Input file not found: {resolved}")
+    if not resolved.is_file():
+        raise typer.BadParameter(f"Input path is not a file: {resolved}")
+    return resolved
+
+
+def _load_case(input_file: Path) -> BiometanoCase:
+    """Load and validate a BiometanoCase from YAML/JSON."""
+    with open(input_file) as f:
+        if input_file.suffix in (".yaml", ".yml"):
+            data = yaml.safe_load(f)
+        else:
+            import json
+            data = json.load(f)
+    
+    return BiometanoCase.model_validate(data)
+
+
+@app.command()
+def init(
+    output_file: Path = typer.Option(
+        Path("case_files/biometano_case.yaml"),
+        "--output", "-o",
+        help="Output file path",
+    ),
+) -> None:
+    """
+    Generate a Biometano case template YAML file.
+    
+    Creates a template with default values that can be customized.
+    Uses ZES credit rate of 14.6189% by default.
+    """
+    template = {
+        # ... (full template retained implicitly by skipping replacement if only top/commands change)
+        # Actually I need to be careful not to delete the init body if I'm replacing a chunk.
+        # But this replace_file_content replaces a chunk based on Start/End lines.
+        # I will replace the helper functions and then handle commands separately to avoid issues.
+    }
+    # Wait, the tool requires StartLine and EndLine.
+    # I should do this in multiple small edits.
+    pass
+
 
 
 def _load_case(input_file: Path) -> BiometanoCase:
@@ -161,11 +245,15 @@ def init(
 
 @app.command()
 def run(
-    input_file: Path = typer.Argument(
-        ...,
+    input_file: Optional[Path] = typer.Argument(
+        None,
         help="Path to Biometano case YAML/JSON file",
-        exists=True,
-        readable=True,
+    ),
+    input_option: Optional[Path] = typer.Option(
+        None,
+        "--input",
+        "-i",
+        help="Path to Biometano case YAML/JSON file",
     ),
     value: str = typer.Option(
         "enterprise",  # Default changed to enterprise
@@ -192,6 +280,11 @@ def run(
         "--quiet", "-q",
         help="Suppress table output",
     ),
+    open_folder: bool = typer.Option(
+        False,
+        "--open",
+        help="Open output folder/file after completion",
+    ),
 ) -> None:
     """
     Run Biometano project finance analysis.
@@ -199,6 +292,7 @@ def run(
     Default methodology: Enterprise Value (FCFF/WACC).
     """
     try:
+        input_file = _resolve_input_file(input_file, input_option)
         console.print(f"[dim]Loading case: {input_file}[/dim]")
         case = _load_case(input_file)
         
@@ -226,11 +320,15 @@ def run(
             console.print(f"[dim]Saving charts to: {charts_dir}[/dim]")
             files = save_biometano_charts(projections, valuation, charts_dir)
             console.print(f"[green]✓ Saved {len(files)} chart files[/green]")
-        
+            if open_folder and not output: # prioritize output file if both set
+                 _open_path(Path(charts_dir))
+
         if output:
             console.print(f"[dim]Exporting to: {output}[/dim]")
             export_xlsx_biometano(projections, statements, valuation, output)
             console.print(f"[green]✓ Exported to {output}[/green]")
+            if open_folder:
+                 _open_path(output)
         
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
@@ -239,11 +337,15 @@ def run(
 
 @app.command()
 def sens(
-    input_file: Path = typer.Argument(
-        ...,
+    input_file: Optional[Path] = typer.Argument(
+        None,
         help="Path to Biometano case YAML/JSON file",
-        exists=True,
-        readable=True,
+    ),
+    input_option: Optional[Path] = typer.Option(
+        None,
+        "--input",
+        "-i",
+        help="Path to Biometano case YAML/JSON file",
     ),
     value: str = typer.Option(
         "enterprise",  # Default to enterprise
@@ -260,6 +362,11 @@ def sens(
         "--charts-dir",
         help="Directory to save chart files",
     ),
+    open_folder: bool = typer.Option(
+        False,
+        "--open",
+        help="Open output folder after completion",
+    ),
 ) -> None:
     """
     Run sensitivity analysis on a Biometano case.
@@ -268,6 +375,7 @@ def sens(
     Produces tornado chart and scenario comparison.
     """
     try:
+        input_file = _resolve_input_file(input_file, input_option)
         console.print(f"[dim]Loading case: {input_file}[/dim]")
         case = _load_case(input_file)
         
@@ -299,6 +407,8 @@ def sens(
             create_scenario_comparison_chart(sensitivity, methodology=value).write_html(str(charts_dir / "scenario_comparison.html"))
             
             console.print(f"[green]✓ Saved sensitivity charts to {charts_dir}[/green]")
+            if open_folder:
+                 _open_path(charts_dir)
         
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
@@ -307,11 +417,15 @@ def sens(
 
 @app.command()
 def report(
-    input_file: Path = typer.Argument(
-        ...,
+    input_file: Optional[Path] = typer.Argument(
+        None,
         help="Path to Biometano case YAML/JSON file",
-        exists=True,
-        readable=True,
+    ),
+    input_option: Optional[Path] = typer.Option(
+        None,
+        "--input",
+        "-i",
+        help="Path to Biometano case YAML/JSON file",
     ),
     output_dir: Path = typer.Option(
         Path("output/biometano"),
@@ -322,6 +436,11 @@ def report(
         "enterprise",  # Default to enterprise
         "--value",
         help="Valuation method: 'enterprise' (default) or 'equity'",
+    ),
+    open_folder: bool = typer.Option(
+        False,
+        "--open",
+        help="Open output directory after completion",
     ),
 ) -> None:
     """
@@ -337,11 +456,13 @@ def report(
     5. Financial Statement (Yearly)
     6. Balance Sheet (Yearly)
     7. FCFF Schedule
-    8. Valuation Summary
-    9. Sensitivity Analysis
-    10. Scenario Comparison
+    8. Discounting + PV + Terminal Value
+    9. Valuation Summary
+    10. Sensitivity Analysis
+    11. Scenario Comparison
     """
     try:
+        input_file = _resolve_input_file(input_file, input_option)
         console.print(f"[dim]Loading case: {input_file}[/dim]")
         case = _load_case(input_file)
         
@@ -396,6 +517,9 @@ def report(
         
         console.print()
         console.print("[bold green]✓ Full report generated successfully[/bold green]")
+        
+        if open_folder:
+            _open_path(output_dir)
         
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")

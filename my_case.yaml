@@ -1,0 +1,143 @@
+horizon:
+  base_year: 2024
+  years_forecast: 15
+  construction_years: 2
+production:
+  forsu_throughput_tpy: 60000
+  biomethane_smc_y: 4000000
+  kwh_per_smc: 10
+  impurity_rate: 0.2
+  availability_profile:
+  - 0.75
+  - 0.9
+  - 0.95
+  - 0.95
+  - 0.95
+  compost_tpy: 12148
+  co2_tpy: 4560
+revenues:
+  gate_fee:
+    price: 190
+    payment_delay_days: 45
+    escalation_rate: 0
+  tariff:
+    price: 70.16
+    payment_delay_days: 90
+    escalation_rate: 0
+  go:
+    price: 0.3
+    payment_delay_days: 60
+    escalation_rate: 0
+  co2:
+    price: 120
+    payment_delay_days: 45
+    escalation_rate: 0
+  compost:
+    price: 5
+    payment_delay_days: 30
+    escalation_rate: 0
+opex:
+  feedstock_handling:
+    fixed_annual: 500000
+    variable_per_tonne: 5
+  utilities:
+    fixed_annual: 300000
+    variable_per_mwh: 2
+  chemicals:
+    fixed_annual: 100000
+  maintenance:
+    percent_of_capex: 0.02
+  personnel:
+    fixed_annual: 800000
+  insurance:
+    percent_of_capex: 0.005
+  overheads:
+    fixed_annual: 200000
+  digestate_handling:
+    variable_per_tonne: 3
+  other:
+    fixed_annual: 50000
+capex:
+  epc:
+    amount: 25000000
+    spend_profile:
+    - 0.4
+    - 0.6
+    useful_life_years: 20
+    eligible_for_grant: true
+  civils:
+    amount: 5000000
+    spend_profile:
+    - 0.7
+    - 0.3
+    useful_life_years: 30
+    eligible_for_grant: true
+  upgrading_unit:
+    amount: 8000000
+    spend_profile:
+    - 0.3
+    - 0.7
+    useful_life_years: 15
+    eligible_for_grant: true
+  grid_connection:
+    amount: 2000000
+    spend_profile:
+    - 0.5
+    - 0.5
+    useful_life_years: 25
+    eligible_for_grant: true
+  engineering:
+    amount: 1500000
+    spend_profile:
+    - 0.8
+    - 0.2
+    useful_life_years: 20
+  permitting:
+    amount: 500000
+    spend_profile:
+    - 1.0
+    useful_life_years: 20
+  contingency:
+    amount: 2000000
+    spend_profile:
+    - 0.3
+    - 0.7
+    useful_life_years: 20
+  startup_costs:
+    amount: 500000
+    spend_profile:
+    - 0.0
+    - 1.0
+    capitalize: false
+  capitalize_idc: false
+financing:
+  debt_amount: 30000000
+  debt_drawdown_profile:
+  - 0.4
+  - 0.6
+  cost_of_debt: 0.05
+  debt_repayment_years: 12
+  cash_at_base: 5000000
+  equity_book_at_base: 15000000
+  tax_rate: 0.24
+  rf: 0.03
+  rm: 0.08
+  beta: 1.2
+incentives:
+  capital_grant:
+    enabled: true
+    percent_of_eligible: 0.4
+    recognition_trigger: at_cod
+    cash_receipt_schedule:
+    - 0.5
+    - 0.5
+    accounting_policy: A2
+  tax_credit:
+    enabled: true
+    percent_of_eligible: 0.146189
+    eligible_base: capex
+    carry_forward_years: 5
+    accounting_policy: B1
+terminal_value:
+  method: perpetuity
+  perpetuity_growth: 0.0

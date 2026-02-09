@@ -32,16 +32,33 @@ except ImportError:
     pass  # Biometano module not available
 
 
+
 console = Console()
+
+
+def _resolve_input_file(input_file: Optional[Path], input_option: Optional[Path]) -> Path:
+    """Resolve input file from positional arg or --input option."""
+    resolved = input_option or input_file
+    if resolved is None:
+        raise typer.BadParameter("Missing input file. Provide a positional INPUT_FILE or --input.")
+    if not resolved.exists():
+        raise typer.BadParameter(f"Input file not found: {resolved}")
+    if not resolved.is_file():
+        raise typer.BadParameter(f"Input path is not a file: {resolved}")
+    return resolved
 
 
 @app.command()
 def run(
-    input_file: Path = typer.Argument(
-        ...,
+    input_file: Optional[Path] = typer.Argument(
+        None,
         help="Path to input file (YAML or JSON)",
-        exists=True,
-        readable=True,
+    ),
+    input_option: Optional[Path] = typer.Option(
+        None,
+        "--input",
+        "-i",
+        help="Path to input file (YAML or JSON)",
     ),
     output: Optional[Path] = typer.Option(
         None,
@@ -77,6 +94,7 @@ def run(
     and generates charts.
     """
     try:
+        input_file = _resolve_input_file(input_file, input_option)
         # Read inputs
         console.print(f"[dim]Reading input file: {input_file}[/dim]")
         inputs = read_input_file(input_file)
@@ -119,11 +137,15 @@ def run(
 
 @app.command()
 def validate(
-    input_file: Path = typer.Argument(
-        ...,
+    input_file: Optional[Path] = typer.Argument(
+        None,
         help="Path to input file (YAML or JSON)",
-        exists=True,
-        readable=True,
+    ),
+    input_option: Optional[Path] = typer.Option(
+        None,
+        "--input",
+        "-i",
+        help="Path to input file (YAML or JSON)",
     ),
 ) -> None:
     """
@@ -132,6 +154,7 @@ def validate(
     Checks that all required fields are present and consistent.
     """
     try:
+        input_file = _resolve_input_file(input_file, input_option)
         console.print(f"[dim]Validating: {input_file}[/dim]")
         inputs = read_input_file(input_file)
         
@@ -154,11 +177,15 @@ def validate(
 
 @app.command()
 def export(
-    input_file: Path = typer.Argument(
-        ...,
+    input_file: Optional[Path] = typer.Argument(
+        None,
         help="Path to input file (YAML or JSON)",
-        exists=True,
-        readable=True,
+    ),
+    input_option: Optional[Path] = typer.Option(
+        None,
+        "--input",
+        "-i",
+        help="Path to input file (YAML or JSON)",
     ),
     output: Path = typer.Option(
         ...,
@@ -182,6 +209,7 @@ def export(
     Primary export is Excel. Optionally also exports CSV and charts.
     """
     try:
+        input_file = _resolve_input_file(input_file, input_option)
         # Read and run
         inputs = read_input_file(input_file)
         engine = DCFEngine(inputs)
