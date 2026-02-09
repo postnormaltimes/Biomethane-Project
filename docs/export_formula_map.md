@@ -7,15 +7,15 @@ This document summarizes the execution path and Excel formula layout for the DCF
 ### Generic DCF
 
 1. `dcf_ui_cli.cli:app`
-   * `run` / `export` commands call `DCFEngine(inputs).run()`.【F:src/dcf_ui_cli/cli.py†L33-L231】【F:src/dcf_engine/engine.py†L44-L343】
-2. `DCFEngine` returns `DCFOutputs` containing projections, cash flows, discounting, and valuation bridge data.【F:src/dcf_engine/engine.py†L88-L343】【F:src/dcf_engine/models.py†L306-L357】
-3. `dcf_io.writers.export_xlsx(..., xlsx_mode="formulas")` builds the formula-driven workbook via `_write_dcf_formula_workbook`.【F:src/dcf_io/writers.py†L676-L706】
+   * `run` / `export` commands call `DCFEngine(inputs).run()`.【F:src/dcf_ui_cli/cli.py†L21-L236】【F:src/dcf_engine/engine.py†L67-L199】
+2. `DCFEngine` returns `DCFOutputs` containing projections, cash flows, discounting, and valuation bridge data.【F:src/dcf_engine/engine.py†L88-L199】【F:src/dcf_engine/models.py†L306-L331】
+3. `dcf_io.writers.export_xlsx(..., xlsx_mode="formulas")` builds the formula-driven workbook via `_write_dcf_formula_workbook`.【F:src/dcf_io/writers.py†L799-L829】
 
 ### Biometano
 
 1. `dcf_ui_cli.biometano_cli:app` commands call:
-   * `build_projections` → `build_statements` → `compute_valuation`.【F:src/dcf_ui_cli/biometano_cli.py†L296-L524】【F:src/dcf_projects/biometano/builder.py†L172-L256】【F:src/dcf_projects/biometano/statements.py†L202-L341】【F:src/dcf_projects/biometano/valuation.py†L33-L162】
-2. `dcf_io.writers.export_xlsx_biometano(..., xlsx_mode="formulas", case=case)` writes the formula model using `_write_biometano_formula_workbook`.【F:src/dcf_ui_cli/biometano_cli.py†L320-L524】【F:src/dcf_io/writers.py†L914-L1393】
+   * `build_projections` → `build_statements` → `compute_valuation`.【F:src/dcf_ui_cli/biometano_cli.py†L244-L475】【F:src/dcf_projects/biometano/builder.py†L717-L728】【F:src/dcf_projects/biometano/statements.py†L460-L475】【F:src/dcf_projects/biometano/valuation.py†L283-L298】
+2. `dcf_io.writers.export_xlsx_biometano(..., xlsx_mode="formulas", case=case)` writes the formula model using `_write_biometano_formula_workbook`.【F:src/dcf_ui_cli/biometano_cli.py†L465-L475】【F:src/dcf_io/writers.py†L1002-L1737】
 
 ## Sheet Mapping (Formula Exports)
 
