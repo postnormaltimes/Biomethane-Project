@@ -48,23 +48,6 @@ app = typer.Typer(
 console = Console()
 
 
-
-def _open_path(path: Path) -> None:
-    """Open a file or directory in the system file explorer."""
-    try:
-        if path.is_file():
-            # If it's a file, reveal it in the folder (or open it, depending on implementation)
-            # typer.launch(str(path), locate=True) reveals in Finder/Explorer
-            typer.launch(str(path), locate=True)
-            console.print(f"[dim]Opened folder containing: {path}[/dim]")
-        elif path.is_dir():
-            typer.launch(str(path))
-            console.print(f"[dim]Opened directory: {path}[/dim]")
-    except Exception as e:
-        console.print(f"[yellow]Could not open path: {e}[/yellow]")
-
-
-
 def _open_path(path: Path) -> None:
     """Open a file or directory in the system file explorer."""
     try:
@@ -72,11 +55,11 @@ def _open_path(path: Path) -> None:
         # typer.launch(...) opens the file/folder
         path_str = str(path)
         if path.is_file():
-             typer.launch(path_str, locate=True)
-             console.print(f"[dim]Revealed in Finder: {path.name}[/dim]")
+            typer.launch(path_str, locate=True)
+            console.print(f"[dim]Revealed in Finder: {path.name}[/dim]")
         else:
-             typer.launch(path_str)
-             console.print(f"[dim]Opened folder: {path.name}[/dim]")
+            typer.launch(path_str)
+            console.print(f"[dim]Opened folder: {path.name}[/dim]")
     except Exception as e:
         console.print(f"[yellow]Could not open path: {e}[/yellow]")
 
@@ -91,44 +74,6 @@ def _resolve_input_file(input_file: Optional[Path], input_option: Optional[Path]
     if not resolved.is_file():
         raise typer.BadParameter(f"Input path is not a file: {resolved}")
     return resolved
-
-
-def _load_case(input_file: Path) -> BiometanoCase:
-    """Load and validate a BiometanoCase from YAML/JSON."""
-    with open(input_file) as f:
-        if input_file.suffix in (".yaml", ".yml"):
-            data = yaml.safe_load(f)
-        else:
-            import json
-            data = json.load(f)
-    
-    return BiometanoCase.model_validate(data)
-
-
-@app.command()
-def init(
-    output_file: Path = typer.Option(
-        Path("case_files/biometano_case.yaml"),
-        "--output", "-o",
-        help="Output file path",
-    ),
-) -> None:
-    """
-    Generate a Biometano case template YAML file.
-    
-    Creates a template with default values that can be customized.
-    Uses ZES credit rate of 14.6189% by default.
-    """
-    template = {
-        # ... (full template retained implicitly by skipping replacement if only top/commands change)
-        # Actually I need to be careful not to delete the init body if I'm replacing a chunk.
-        # But this replace_file_content replaces a chunk based on Start/End lines.
-        # I will replace the helper functions and then handle commands separately to avoid issues.
-    }
-    # Wait, the tool requires StartLine and EndLine.
-    # I should do this in multiple small edits.
-    pass
-
 
 
 def _load_case(input_file: Path) -> BiometanoCase:
@@ -325,8 +270,8 @@ def run(
             console.print(f"[dim]Saving charts to: {charts_dir}[/dim]")
             files = save_biometano_charts(projections, valuation, charts_dir)
             console.print(f"[green]✓ Saved {len(files)} chart files[/green]")
-            if open_folder and not output: # prioritize output file if both set
-                 _open_path(Path(charts_dir))
+            if open_folder and not output:  # prioritize output file if both set
+                _open_path(Path(charts_dir))
 
         if output:
             console.print(f"[dim]Exporting to: {output}[/dim]")
@@ -340,7 +285,7 @@ def run(
             )
             console.print(f"[green]✓ Exported to {output}[/green]")
             if open_folder:
-                 _open_path(output)
+                _open_path(output)
         
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
@@ -420,7 +365,7 @@ def sens(
             
             console.print(f"[green]✓ Saved sensitivity charts to {charts_dir}[/green]")
             if open_folder:
-                 _open_path(charts_dir)
+                _open_path(charts_dir)
         
     except Exception as e:
         console.print(f"[red]Error: {e}[/red]")
