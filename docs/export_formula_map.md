@@ -10,12 +10,14 @@ This document summarizes the execution path and Excel formula layout for the DCF
    * `run` / `export` commands call `DCFEngine(inputs).run()`.【F:src/dcf_ui_cli/cli.py†L33-L231】【F:src/dcf_engine/engine.py†L44-L343】
 2. `DCFEngine` returns `DCFOutputs` containing projections, cash flows, discounting, and valuation bridge data.【F:src/dcf_engine/engine.py†L88-L343】【F:src/dcf_engine/models.py†L306-L357】
 3. `dcf_io.writers.export_xlsx(..., xlsx_mode="formulas")` builds the formula-driven workbook via `_write_dcf_formula_workbook`.【F:src/dcf_io/writers.py†L676-L706】
+3. `dcf_io.writers.export_xlsx(..., xlsx_mode="formulas")` builds the formula-driven workbook via `_write_dcf_formula_workbook`.【F:src/dcf_io/writers.py†L665-L712】
 
 ### Biometano
 
 1. `dcf_ui_cli.biometano_cli:app` commands call:
    * `build_projections` → `build_statements` → `compute_valuation`.【F:src/dcf_ui_cli/biometano_cli.py†L296-L524】【F:src/dcf_projects/biometano/builder.py†L172-L256】【F:src/dcf_projects/biometano/statements.py†L202-L341】【F:src/dcf_projects/biometano/valuation.py†L33-L162】
 2. `dcf_io.writers.export_xlsx_biometano(..., xlsx_mode="formulas", case=case)` writes the formula model using `_write_biometano_formula_workbook`.【F:src/dcf_ui_cli/biometano_cli.py†L320-L524】【F:src/dcf_io/writers.py†L914-L1393】
+2. `dcf_io.writers.export_xlsx_biometano(..., xlsx_mode="formulas", case=case)` writes the formula model using `_write_biometano_formula_workbook`.【F:src/dcf_ui_cli/biometano_cli.py†L320-L524】【F:src/dcf_io/writers.py†L914-L1017】
 
 ## Sheet Mapping (Formula Exports)
 
@@ -29,6 +31,7 @@ This document summarizes the execution path and Excel formula layout for the DCF
 | `Income_Statement` | Formulas for EBITDA → EBIT → taxes → net income. |
 | `Balance_Sheet` | NWC (revenue-driven), ΔNWC, debt/equity links. |
 | `Balance_Sheet_Reclass` | CIN / NFP / Equity roll-up and identity checks. |
+| `Balance_Sheet` | NWC + ΔNWC formulas; debt/equity book links. |
 | `Cash_Flow` | FCFF/FCFE formulas driven off income statement and assumptions. |
 | `FCFF` | Summary of FCFF/FCFE from `Cash_Flow`. |
 | `Discounting` | DF, PV, and sums computed with formulas. |
@@ -47,6 +50,7 @@ This document summarizes the execution path and Excel formula layout for the DCF
 | `Income_Statement` | Revenue → EBITDA → EBIT → taxes → net income formulas. |
 | `Balance_Sheet` | Component links + total formulas (AR/AP via DSO/DPO). |
 | `Balance_Sheet_Reclass` | CIN / NFP / Equity roll-up and identity checks. |
+| `Balance_Sheet` | Component links + total formulas. |
 | `Cash_Flow` | CFO/CFI/CFF formulas using assumptions + income statement. |
 | `FCFF` | FCFF/FCFE formulas and net borrowing link. |
 | `Discounting` | DF/PV formulas based on WACC/Ke. |

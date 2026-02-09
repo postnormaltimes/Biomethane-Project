@@ -83,5 +83,13 @@ def test_export_xlsx_formulas(tmp_path: Path) -> None:
     )
     assert not missing
 
+    cash_flow = wb["Cash_Flow"]
+    assert isinstance(cash_flow["B6"].value, str)
+    assert cash_flow["B6"].value.startswith("=")
+
+    discounting = wb["Discounting"]
+    assert isinstance(discounting["B8"].value, str)
+    assert discounting["B8"].value.startswith("=")
+
     assumptions = wb["Assumptions"]
     assert not (isinstance(assumptions["B2"].value, str) and assumptions["B2"].value.startswith("="))
