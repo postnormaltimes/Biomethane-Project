@@ -22,6 +22,7 @@ from dcf_engine.models import (
     WeightingMode,
 )
 from dcf_io.writers import export_xlsx
+from dcf_io.xlsx_validation import FormulaCheck, find_missing_formulas
 
 
 def _make_golden_inputs() -> DCFInputs:
@@ -68,6 +69,19 @@ def test_export_xlsx_formulas(tmp_path: Path) -> None:
     assert "Discounting" in wb.sheetnames
     assert "Valuation_Summary" in wb.sheetnames
     assert "Audit_Notes" in wb.sheetnames
+    assert "Audit_Checks" in wb.sheetnames
+    assert "Balance_Sheet_Reclass" in wb.sheetnames
+
+    missing = find_missing_formulas(
+        wb,
+        [
+            FormulaCheck("Cash_Flow", ["B6"]),
+            FormulaCheck("Discounting", ["B8"]),
+            FormulaCheck("Audit_Checks", ["C2"]),
+            FormulaCheck("Balance_Sheet_Reclass", ["B4"]),
+        ],
+    )
+    assert not missing
 
     cash_flow = wb["Cash_Flow"]
     assert isinstance(cash_flow["B6"].value, str)

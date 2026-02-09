@@ -8,6 +8,7 @@ from dcf_projects.biometano.builder import build_projections
 from dcf_projects.biometano.statements import build_statements
 from dcf_projects.biometano.valuation import compute_valuation
 from dcf_io.writers import export_xlsx_biometano
+from dcf_io.xlsx_validation import FormulaCheck, find_missing_formulas
 
 
 CASE_FILE = Path(__file__).parent.parent.parent / "src/dcf_projects/biometano/case_files/biometano_case.yaml"
@@ -38,6 +39,18 @@ def test_biometano_export_formulas(tmp_path: Path) -> None:
     assert "Discounting" in wb.sheetnames
     assert "Valuation_Summary" in wb.sheetnames
     assert "Audit_Notes" in wb.sheetnames
+    assert "Audit_Checks" in wb.sheetnames
+    assert "Balance_Sheet_Reclass" in wb.sheetnames
+
+    missing = find_missing_formulas(
+        wb,
+        [
+            FormulaCheck("Revenue_By_Channel", ["B2"]),
+            FormulaCheck("Audit_Checks", ["B2"]),
+            FormulaCheck("Balance_Sheet_Reclass", ["B4"]),
+        ],
+    )
+    assert not missing
 
     revenue = wb["Revenue_By_Channel"]
     assert isinstance(revenue["B2"].value, str)
