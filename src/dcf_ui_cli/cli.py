@@ -13,7 +13,7 @@ from rich.console import Console
 
 from dcf_engine.engine import DCFEngine
 from dcf_io.readers import read_input_file
-from dcf_io.writers import export_xlsx, export_csv
+from dcf_io.writers import export_xlsx, export_csv, export_xlsx_biometano, export_csv_biometano
 from dcf_ui_cli.display import display_all
 from dcf_ui_cli.charts import save_charts, show_charts
 
@@ -65,6 +65,11 @@ def run(
         "--output", "-o",
         help="Output Excel file path",
     ),
+    xlsx_mode: str = typer.Option(
+        "formulas",
+        "--xlsx-mode",
+        help="Excel export mode: formulas or values",
+    ),
     csv_dir: Optional[Path] = typer.Option(
         None,
         "--csv-dir",
@@ -111,7 +116,7 @@ def run(
         # Export to Excel
         if output:
             console.print(f"\n[dim]Exporting to Excel: {output}[/dim]")
-            export_xlsx(outputs, output)
+            export_xlsx(outputs, output, xlsx_mode=xlsx_mode)
             console.print(f"[green]✓ Exported to {output}[/green]")
         
         # Export to CSV
@@ -192,6 +197,16 @@ def export(
         "--output", "-o",
         help="Output Excel file path",
     ),
+    xlsx_mode: str = typer.Option(
+        "formulas",
+        "--xlsx-mode",
+        help="Excel export mode: formulas or values",
+    ),
+    export_format: str = typer.Option(
+        "xlsx",
+        "--format",
+        help="Export format (xlsx only)",
+    ),
     include_csv: bool = typer.Option(
         False,
         "--csv",
@@ -210,30 +225,67 @@ def export(
     """
     try:
         input_file = _resolve_input_file(input_file, input_option)
-        # Read and run
+        if export_format.lower() != "xlsx":
+            raise typer.BadParameter("Only xlsx export is supported.")
+
         inputs = read_input_file(input_file)
         engine = DCFEngine(inputs)
         outputs = engine.run()
-        
-        # Export Excel
-        export_xlsx(outputs, output)
+
+        export_xlsx(outputs, output, xlsx_mode=xlsx_mode)
         console.print(f"[green]✓ Exported to {output}[/green]")
-        
-        # Export CSV
+
         if include_csv:
             csv_dir = output.parent / "csv"
             files = export_csv(outputs, csv_dir)
             console.print(f"[green]✓ Exported {len(files)} CSV files to {csv_dir}[/green]")
-        
-        # Export charts
+
         if include_charts:
             charts_dir = output.parent / "charts"
             files = save_charts(outputs, charts_dir)
             console.print(f"[green]✓ Saved {len(files)} chart files to {charts_dir}[/green]")
-    
-    except Exception as e:
-        console.print(f"[red]Error: {e}[/red]")
-        raise typer.Exit(code=1)
+
+    except Exception as dcf_error:
+        try:
+            import yaml
+
+            from dcf_projects.biometano.schema import BiometanoCase
+            from dcf_projects.biometano.builder import build_projections
+            from dcf_projects.biometano.statements import build_statements
+            from dcf_projects.biometano.valuation import compute_valuation
+
+            with open(input_file) as handle:
+                data = yaml.safe_load(handle)
+            case = BiometanoCase.model_validate(data)
+            projections = build_projections(case)
+            statements = build_statements(case, projections)
+            valuation = compute_valuation(case, projections)
+
+            export_xlsx_biometano(
+                projections,
+                statements,
+                valuation,
+                output,
+                case=case,
+                xlsx_mode=xlsx_mode,
+            )
+            console.print(f"[green]✓ Exported to {output}[/green]")
+
+            if include_csv:
+                csv_dir = output.parent / "csv"
+                files = export_csv_biometano(projections, statements, valuation, csv_dir)
+                console.print(f"[green]✓ Exported {len(files)} CSV files to {csv_dir}[/green]")
+
+            if include_charts:
+                charts_dir = output.parent / "charts"
+                from dcf_ui_cli.biometano_charts import save_biometano_charts
+
+                files = save_biometano_charts(projections, valuation, charts_dir)
+                console.print(f"[green]✓ Saved {len(files)} chart files to {charts_dir}[/green]")
+
+        except Exception:
+            console.print(f"[red]Error: {dcf_error}[/red]")
+            raise typer.Exit(code=1)
 
 
 if __name__ == "__main__":
