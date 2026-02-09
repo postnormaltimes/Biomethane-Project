@@ -275,6 +275,11 @@ def run(
         "--output", "-o",
         help="Output Excel file path",
     ),
+    xlsx_mode: str = typer.Option(
+        "formulas",
+        "--xlsx-mode",
+        help="Excel export mode: formulas or values",
+    ),
     quiet: bool = typer.Option(
         False,
         "--quiet", "-q",
@@ -325,7 +330,14 @@ def run(
 
         if output:
             console.print(f"[dim]Exporting to: {output}[/dim]")
-            export_xlsx_biometano(projections, statements, valuation, output)
+            export_xlsx_biometano(
+                projections,
+                statements,
+                valuation,
+                output,
+                case=case,
+                xlsx_mode=xlsx_mode,
+            )
             console.print(f"[green]✓ Exported to {output}[/green]")
             if open_folder:
                  _open_path(output)
@@ -432,6 +444,11 @@ def report(
         "--output", "-o",
         help="Output directory for all exports",
     ),
+    xlsx_mode: str = typer.Option(
+        "formulas",
+        "--xlsx-mode",
+        help="Excel export mode: formulas or values",
+    ),
     value: str = typer.Option(
         "enterprise",  # Default to enterprise
         "--value",
@@ -502,7 +519,14 @@ def report(
         
         # Excel
         xlsx_path = output_dir / "biometano_report.xlsx"
-        export_xlsx_biometano(projections, statements, valuation, xlsx_path)
+        export_xlsx_biometano(
+            projections,
+            statements,
+            valuation,
+            xlsx_path,
+            case=case,
+            xlsx_mode=xlsx_mode,
+        )
         console.print(f"[green]✓ Exported Excel: {xlsx_path}[/green]")
         
         # CSV
